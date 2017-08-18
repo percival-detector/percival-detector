@@ -5,6 +5,9 @@
  *      Author: tcn45
  */
 
+#define BOOST_TEST_MODULE "PercivalEmulatorFrameDecoderTests"
+#define BOOST_TEST_MAIN
+
 #include <boost/test/unit_test.hpp>
 #include <boost/shared_ptr.hpp>
 #include <iostream>
@@ -14,6 +17,8 @@
 #include <log4cxx/simplelayout.h>
 
 #include "PercivalEmulatorFrameDecoder.h"
+
+IMPLEMENT_DEBUG_LEVEL;
 
 class FrameDecoderTestFixture
 {
