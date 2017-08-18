@@ -18,7 +18,7 @@ matrix:
     env: HDF5_ROOT=$HOME/hdf5-1.10.1 INSTALL_PREFIX=$HOME/install_prefix
     before_install:
     - bash .travis-install-hdf5.sh
-    - git clone git@github.com:percival-detector/odin-data.git
+    - git clone https://github.com/percival-detector/odin-data.git
     cache:
       directories:
       - "$HOME/hdf5-1.10.1"
