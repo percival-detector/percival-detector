@@ -25,25 +25,27 @@ matrix:
       - "$HOME/.cache/pip"
       - "$HOME/.local/lib"
 install:
-- mkdir -p $INSTALL_PREFIX
-- cd odin-data
-- mkdir -p build
-- cd build
-- cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX -$HDF5_ROOT=$HDF5_ROOT ..
-- make -j 4 VERBOSE=1
-- make install
-- cd ../../data
-- mkdir -p build
-- cd build
-- cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX -DODINDATA_ROOT_DIR=$INSTALL_PREFIX -DHDF5_ROOT=$HDF5_ROOT ..
-- make -j 4 VERBOSE=1
-- make install
+  - mkdir -p $INSTALL_PREFIX
+  - cd odin-data
+  - mkdir -p build
+  - cd build
+  - cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX -$HDF5_ROOT=$HDF5_ROOT ..
+  - make -j 4 VERBOSE=1
+  - make install
+  - cd ../../data
+  - mkdir -p build
+  - cd build
+  - cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX -DODINDATA_ROOT_DIR=$INSTALL_PREFIX -DHDF5_ROOT=$HDF5_ROOT ..
+  - make -j 4 VERBOSE=1
+  - make install
 # - HDF5_DIR=$HDF5_ROOT pip install --user h5py
 # - pip install --user -r $PYTHONPATH/requirements-travis.txt
 script:
-#- bin/frameReceiverTest --log_level=all
-#- bin/frameProcessorTest --log_level=all
-- ls -R $INSTALL_PREFIX
+  - ../../odin-data/build/bin/frameReceiverTest --log_level=all
+  - ../../odin-data/build/bin/frameProcessorTest --log_level=all
+  - bin/percivalFrameReceiverTest --log_level=all
+  - bin/percivalFrameProcessorTest --log_level=all
+  - ls -R $INSTALL_PREFIX
 notifications:
   slack:
     secure: mdCrXPSrB9wzB0NJlaP3jz/IC/MzG79wFZJ4YqaT1Jzl41WAYXik4YiUSPCGTn5LBHxEZ3ytF0jUdUuXHG637AEZ7n3Lx9qwjXxnwKkp08V4+vYfo4El4n4YZWGW26K4By/Hv0S67n6X36hNjT1jqq7o/6DsKR7lbacfjH3Oa/LwvuaCXUfxcy+Rv8e6FY+hqywPSIhSkE23MWz96qRsYOsuRQ/VaC/N0Hfti/SHbp+h2Sx01Y6eahviuSOlUY0j/+k9nsg6XbRUYvWGs2xewx/j0BhZucydt22U92tmfeHbUbHyuUX42rlUdpWor5axLqANSHnuwMpAMtumhp/Z6W2URQBSjxiZ9s/avPoKihq0bL7WOupjxCyMomHscTFqTfH1nwQFowa+iPuC9xlbyu+6ZZVeTQcSih7CXNMr8IyER+ZmUfOYCz6HVxdO3ZSLSNpabF6p7ZrPb7AkjIaxtZgZe3PwCFA5rva5sKBBtN12r7TYkafBk6eQGPHfke30coMwf4SMTlYQm35I7JL3+4vNuOCu6Jw+dsugFq0QZ8ssI+8eMq/f0oHEWoqX3XEIP6+CkL/DX2LH88eJo+U+LOVD3eb3BdKUPYgW/1NtngB4Qjlb0m/Srbol1aCQqdR6P1tAPvFj6Nrx61JIfPYSSmBQnx7Id5f3a2VUpRKM0xo=
