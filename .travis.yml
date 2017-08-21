@@ -32,7 +32,7 @@ install:
 - cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX -$HDF5_ROOT=$HDF5_ROOT ..
 - make -j 4 VERBOSE=1
 - make install
-- cd ../..
+- cd ../../data
 - mkdir -p build
 - cd build
 - cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX -DODINDATA_ROOT_DIR=$INSTALL_PREFIX -DHDF5_ROOT=$HDF5_ROOT ..
