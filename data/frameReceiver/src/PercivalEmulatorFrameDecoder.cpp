@@ -91,7 +91,7 @@ void PercivalEmulatorFrameDecoder::process_packet_header(size_t bytes_received, 
         LOG4CXX_INFO(packet_logger_, ss.str());
     }
 
-	uint32_t frame = get_frame_number();
+	int frame = static_cast<int>(get_frame_number());
 	uint16_t packet_number = get_packet_number();
 	uint8_t  subframe = get_subframe_number();
 	uint8_t  type = get_packet_type();
