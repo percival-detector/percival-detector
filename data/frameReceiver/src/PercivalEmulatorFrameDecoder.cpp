@@ -20,30 +20,38 @@ PercivalEmulatorFrameDecoder::PercivalEmulatorFrameDecoder() :
 		current_frame_buffer_id_(-1),
 		current_frame_buffer_(0),
 		current_frame_header_(0),
+		reference_packets_seen_(0),
 		dropping_frame_data_(false)
 {
     current_packet_header_.reset(new uint8_t[sizeof(PercivalEmulator::PacketHeader)]);
     dropped_frame_buffer_.reset(new uint8_t[PercivalEmulator::total_frame_size]);
+    reference_packet_buffer_.reset(new uint8_t[PercivalEmulator::reference_packet_size]);
 }
 
 PercivalEmulatorFrameDecoder::~PercivalEmulatorFrameDecoder()
 {
 }
 
-void PercivalEmulatorFrameDecoder::init(LoggerPtr& logger, bool enable_packet_logging, unsigned int frame_timeout_ms)
+//(LoggerPtr& logger, OdinData::IpcMessage& config_msg)
+//{
+//  FrameDecoderUDP::init(logger,config_msg);
+//
+void PercivalEmulatorFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config_msg)
 {
-	FrameDecoder::init(logger, enable_packet_logging, frame_timeout_ms);
+	FrameDecoder::init(logger, config_msg);
 
     if (enable_packet_logging_) {
         LOG4CXX_INFO(packet_logger_, "PktHdr: SourceAddress");
         LOG4CXX_INFO(packet_logger_, "PktHdr: |               SourcePort");
         LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     DestinationPort");
-        LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      PacketType [1 Byte]");
-        LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      |  SubframeNumber [1 Byte]");
-        LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      |  |  FrameNumber [4 Bytes]");
-        LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      |  |  |           PacketNumber [2 Bytes]");
-        LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      |  |  |           |       Info [14 Bytes]");
-        LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      |  |  |           |       |");
+        LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      PixelDataSize [2 Bytes]");
+        LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      |     PacketType [1 Byte]");
+        LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      |     |  SubframeNumber [1 Byte]");
+        LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      |     |  |  FrameNumber [4 Bytes]");
+        LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      |     |  |  |             PacketNumber [2 Bytes]");
+        LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      |     |  |  |             |     PacketOffset [2 Bytes]");
+        LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      |     |  |  |             |     |     Info [42 Bytes]");
+        LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      |     |  |  |             |     |     |");
     }
 }
 
@@ -110,6 +118,11 @@ void PercivalEmulatorFrameDecoder::process_packet_header(size_t bytes_received, 
             << " packet: "   << packet_number    << " frame: "    << frame
     );
 
+    if (subframe == PercivalEmulator::reference_packet_subframe_number)
+    {
+        reference_packets_seen_++;
+    }
+
     if (frame != current_frame_seen_)
     {
         current_frame_seen_ = frame;
@@ -172,13 +185,20 @@ void PercivalEmulatorFrameDecoder::process_packet_header(size_t bytes_received, 
 void* PercivalEmulatorFrameDecoder::get_next_payload_buffer(void) const
 {
 
-    uint8_t* next_receive_location =
+    uint8_t* next_receive_location;
+
+    if (get_subframe_number() == PercivalEmulator::reference_packet_subframe_number)
+    {
+        next_receive_location = reinterpret_cast<uint8_t*>(reference_packet_buffer_.get());
+    }
+    else {
+        next_receive_location =
             reinterpret_cast<uint8_t*>(current_frame_buffer_) +
             get_frame_header_size() +
             (PercivalEmulator::data_type_size * get_packet_type()) +
             (PercivalEmulator::subframe_size * get_subframe_number()) +
             (PercivalEmulator::primary_packet_size * get_packet_number());
-
+    }
     return reinterpret_cast<void*>(next_receive_location);
 }
 
@@ -186,7 +206,11 @@ size_t PercivalEmulatorFrameDecoder::get_next_payload_size(void) const
 {
    size_t next_receive_size = 0;
 
-	if (get_packet_number() < PercivalEmulator::num_primary_packets)
+    if (get_subframe_number() == PercivalEmulator::reference_packet_subframe_number)
+    {
+        next_receive_size = PercivalEmulator::reference_packet_size;
+    }
+    else if (get_packet_number() < PercivalEmulator::num_primary_packets)
 	{
 		next_receive_size = PercivalEmulator::primary_packet_size;
 	}
@@ -203,7 +227,10 @@ FrameDecoder::FrameReceiveState PercivalEmulatorFrameDecoder::process_packet(siz
 
     FrameDecoder::FrameReceiveState frame_state = FrameDecoder::FrameReceiveStateIncomplete;
 
-	current_frame_header_->packets_received++;
+    if (get_subframe_number() != PercivalEmulator::reference_packet_subframe_number)
+    {
+        current_frame_header_->packets_received++;
+    }
 
 	if (current_frame_header_->packets_received == PercivalEmulator::num_frame_packets)
 	{
@@ -271,9 +298,10 @@ void PercivalEmulatorFrameDecoder::monitor_buffers(void)
     }
     frames_timedout_ += frames_timedout;
 
-    LOG4CXX_DEBUG_LEVEL(2, logger_, get_num_mapped_buffers() << " frame buffers in use, "
+    LOG4CXX_DEBUG_LEVEL(3, logger_, get_num_mapped_buffers() << " frame buffers in use, "
             << get_num_empty_buffers() << " empty buffers available, "
             << frames_timedout_ << " incomplete frames timed out");
+    LOG4CXX_DEBUG_LEVEL(3, logger_, reference_packets_seen_ << " reference packets dropped");
 
 }
 
