@@ -29,40 +29,42 @@ class EmulatorClient(object):
     ## New stuff
     Eth_Dev_RW   = 0x00000001
     
-    MAC_0_ADDR   = 0x80000006 
-    MAC_1_ADDR   = 0x80000000 
-    MAC_2_ADDR   = 0x80000012
-    MAC_3_ADDR   = 0x8000000C 
-    MAC_4_ADDR   = 0x8000001E                                       
-    MAC_5_ADDR   = 0x80000018                                       
-    MAC_6_ADDR   = 0x8000002A                                       
-    MAC_7_ADDR   = 0x80000024 
-    MAC_8_ADDR   = 0x80000036                                       
-    MAC_9_ADDR   = 0x80000030                                       
-    MAC_10_ADDR  = 0x80000042
-    MAC_11_ADDR  = 0x8000003C
-    MAC_12_ADDR  = 0x8000004E                                       
-    MAC_13_ADDR  = 0x80000048                                       
-    MAC_14_ADDR  = 0x8000005A                                       
-    MAC_15_ADDR  = 0x80000054 
+    MAC_0_ADDR   = 0x60006006                                       
+    MAC_1_ADDR   = 0x60006000                                       
+    MAC_2_ADDR   = 0x60006012                                       
+    MAC_3_ADDR   = 0x6000600C 
+    MAC_4_ADDR   = 0x6000601E                                       
+    MAC_5_ADDR   = 0x60006018                                       
+    MAC_6_ADDR   = 0x6000602A                                       
+    MAC_7_ADDR   = 0x60006024 
+    MAC_8_ADDR   = 0x60006036 
+    MAC_9_ADDR   = 0x60006030 
+    MAC_10_ADDR  = 0x60006042                                       
+    MAC_11_ADDR  = 0x6000603C 
+    MAC_12_ADDR  = 0x6000604E                                       
+    MAC_13_ADDR  = 0x60006048 
+    MAC_14_ADDR  = 0x6000605A
+    MAC_15_ADDR  = 0x60006054
 
     IP_0_ADDR    = 0x60000000 
-    IP_1_ADDR    = 0x70000000
+    IP_1_ADDR    = 0x60005000
     IP_2_ADDR    = 0x60000004
-    IP_3_ADDR    = 0x70000004                                       
-    IP_4_ADDR    = 0x60000008       
-    IP_5_ADDR    = 0x70000008                                       
+    IP_3_ADDR    = 0x60005004                                       
+    IP_4_ADDR    = 0x60000008 
+    IP_5_ADDR    = 0x60005008   # Fixed address typo from Java client
     IP_6_ADDR    = 0x6000000C                                       
-    IP_7_ADDR    = 0x7000000C                                       
+    IP_7_ADDR    = 0x6000500C
     IP_8_ADDR    = 0x60000010       
-    IP_9_ADDR    = 0x70000010                                       
-    IP_10_ADDR   = 0x60000014                                       
-    IP_11_ADDR   = 0x70000014                                       
-    IP_12_ADDR   = 0x60000018       
-    IP_13_ADDR   = 0x70000018                                       
-    IP_14_ADDR   = 0x6000001C                                       
-    IP_15_ADDR   = 0x7000001C   
-      
+    IP_9_ADDR    = 0x60005010
+    IP_10_ADDR   = 0x60000014
+    IP_11_ADDR   = 0x60005014
+    IP_12_ADDR   = 0x60000018
+    IP_13_ADDR   = 0x60005018
+    IP_14_ADDR   = 0x6000001C
+    IP_15_ADDR   = 0x6000501C
+    
+    Num_Req_Imgs = 0x60007000
+
     (IP, MAC)    = (0, 1)
 
     def __init__(self):
@@ -77,9 +79,11 @@ class EmulatorClient(object):
                             help='select emulator IP port')
         parser.add_argument('--timeout', type=int, default=5,
                             help='set TCP connection timeout')
-        parser.add_argument ('--delay', type=float, default=1.00,
-                             help='set delay between each address packet')
-    
+        parser.add_argument('--delay', type=float, default=1.00,
+                            help='set delay between each address packet')
+        parser.add_argument('--images', type=int,
+                            help='Set number of images for hardware to send')
+        
         parser.add_argument('--src0', type=str, 
                             help='Configure Mezzanine link 0 IP:MAC addresses')
         parser.add_argument('--src1', type=str, 
@@ -104,6 +108,11 @@ class EmulatorClient(object):
         self.timeout  = args.timeout
         self.delay    = args.delay
         
+        if args.images:
+            self.images = args.images
+        else:
+            self.images = None
+
         if args.src0: 
             self.src0addr = self.extractAddresses(args.src0) 
         else:
@@ -150,13 +159,35 @@ class EmulatorClient(object):
             self.sock.connect((self.host, self.port))
         except socket.timeout:
             raise EmulatorClientError("Connecting to [%s:%d] timed out" % (self.host, self.port))
-            
+
         except socket.error, e:
             if self.sock:
                 self.sock.close()
             raise EmulatorClientError("Error connecting to [%s:%d]: '%s'" % (self.host, self.port, e))
-        
-        if (self.command == 'start') or (self.command == 'stop'):
+
+        if (self.images != None):
+
+            # SNIPPET START #
+#             ipList = self.create_ip(src0ip)
+#             ipSourceString = ''.join(ipList)
+#             self.send_to_hw(EmulatorClient.Eth_Dev_RW, EmulatorClient.IP_0_ADDR, 4, ipSourceString)
+#             time.sleep(self.delay)
+#             
+#             tokenList = self.tokeniser(src0mac)
+#             macSourceStr = ''.join(tokenList)
+#             self.send_to_hw(EmulatorClient.Eth_Dev_RW, EmulatorClient.MAC_0_ADDR, 6, macSourceStr)
+            # SNIPPET END #
+
+            # Convert int to byte(s)
+            imagesString = '%08X' % (self.images)
+
+            print "User elected to request %d (%s) image(s)." % (self.images, imagesString)
+
+#             print "imagesString, images:", imagesString, self.images
+            self.send_to_hw(EmulatorClient.Eth_Dev_RW, EmulatorClient.Num_Req_Imgs, 4, imagesString)
+#             print "Done"
+            
+        elif (self.command == 'start') or (self.command == 'stop'):
 
             # Transmit command
             try:
@@ -170,6 +201,7 @@ class EmulatorClient(object):
                 print "Failed to transmit %s command properly" % self.command
             else:
                 print "Transmitted %s command" % self.command
+        
         else:
             
             # Configure link(s) 
@@ -262,6 +294,8 @@ class EmulatorClient(object):
                 macSourceStr = ''.join(tokenList)
                 self.send_to_hw(EmulatorClient.Eth_Dev_RW, EmulatorClient.MAC_5_ADDR, 6, macSourceStr)
                 time.sleep(self.delay)
+#                 print "DEBUGGING macSourceStr '%s'" % macSourceStr
+#                 print "DEBUGGING tokenList    ", tokenList
 
             print "\nWaiting 3 seconds before closing TCP connection.."
             time.sleep(3.0)
