@@ -25,7 +25,7 @@ def main():
     fname = args.file
     print fname
 
-    with h5py.File(fname, 'r+') as f:
+    with h5py.File(fname, 'r+', libver='latest') as f:
         print f.items()
         
         for name, raw_dset in f.items():  
