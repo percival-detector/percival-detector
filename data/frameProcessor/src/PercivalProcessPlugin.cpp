@@ -10,7 +10,8 @@
 namespace FrameProcessor
 {
 
-  PercivalProcessPlugin::PercivalProcessPlugin()
+  PercivalProcessPlugin::PercivalProcessPlugin() :
+          frame_counter_(0)
   {
     // Setup logging for the class
     logger_ = Logger::getLogger("FW.PercivalProcessPlugin");
@@ -37,7 +38,7 @@ namespace FrameProcessor
 
     // Read out the frame header from the raw frame
     const PercivalEmulator::FrameHeader* hdrPtr = static_cast<const PercivalEmulator::FrameHeader*>(frame->get_data());
-    LOG4CXX_TRACE(logger_, "Raw frame number: " << hdrPtr->frame_number);
+    LOG4CXX_TRACE(logger_, "Raw frame number: " << hdrPtr->frame_number << " offset frame number: " << frame_counter_);
 
     // Raw frame arrive as two sub-frames stored incorrectly in memory
     // -------------------
@@ -56,7 +57,7 @@ namespace FrameProcessor
 
     boost::shared_ptr<Frame> reset_frame;
     reset_frame = boost::shared_ptr<Frame>(new Frame("reset"));
-    reset_frame->set_frame_number(hdrPtr->frame_number);
+    reset_frame->set_frame_number(frame_counter_);
     reset_frame->set_dimensions("reset", p2m_dims);
     // Copy data into frame
     // TODO: This is a fudge as the Frame object will not permit write access to the memory
@@ -81,7 +82,7 @@ namespace FrameProcessor
 
     boost::shared_ptr<Frame> data_frame;
     data_frame = boost::shared_ptr<Frame>(new Frame("data"));
-    data_frame->set_frame_number(hdrPtr->frame_number);
+    data_frame->set_frame_number(frame_counter_);
     data_frame->set_dimensions("data", p2m_dims);
     // Copy data into frame
     // TODO: This is a fudge as the Frame object will not permit write access to the memory
@@ -106,6 +107,9 @@ namespace FrameProcessor
 
     // Free temporary memory allocation
     free(tmp_mem_ptr);
+
+    // Increment local frame counter
+    frame_counter_++;
 
   }
 

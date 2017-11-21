@@ -39,6 +39,9 @@ namespace FrameProcessor
 
     /** Pointer to logger */
     LoggerPtr logger_;
+
+    /* Frame counter */
+    uint32_t frame_counter_;
   };
 
   /**
