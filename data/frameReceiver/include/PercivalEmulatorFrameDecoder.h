@@ -24,7 +24,7 @@ namespace FrameReceiver
         PercivalEmulatorFrameDecoder();
         ~PercivalEmulatorFrameDecoder();
 
-        void init(LoggerPtr& logger, bool enable_packet_logging=false, unsigned int frame_timeout_ms=1000);
+        void init(LoggerPtr& logger, OdinData::IpcMessage& config_msg);
 
         const size_t get_frame_buffer_size(void) const;
         const size_t get_frame_header_size(void) const;
@@ -60,11 +60,14 @@ namespace FrameReceiver
 
         boost::shared_ptr<void> current_packet_header_;
         boost::shared_ptr<void> dropped_frame_buffer_;
+        boost::shared_ptr<void> reference_packet_buffer_;
 
         int current_frame_seen_;
         int current_frame_buffer_id_;
         void* current_frame_buffer_;
         PercivalEmulator::FrameHeader* current_frame_header_;
+
+        unsigned int reference_packets_seen_;
 
         bool dropping_frame_data_;
 

@@ -27,5 +27,11 @@
 *.exe
 *.out
 *.app
+
+# Python virtual environments
+venv*
+
+# Eclipse project metadata files
 /.cproject
 /.project
+/.pydevproject
