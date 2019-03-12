@@ -6,6 +6,7 @@
  */
 
 #include <PercivalProcessPlugin.h>
+#include "version.h"
 
 namespace FrameProcessor
 {
@@ -14,14 +15,39 @@ namespace FrameProcessor
           frame_counter_(0)
   {
     // Setup logging for the class
-    logger_ = Logger::getLogger("FW.PercivalProcessPlugin");
+    logger_ = Logger::getLogger("FP.PercivalProcessPlugin");
     logger_->setLevel(Level::getAll());
-    LOG4CXX_TRACE(logger_, "PercivalProcessPlugin constructor.");
+    LOG4CXX_INFO(logger_, "PercivalProcessPlugin version " << this->get_version_long() << " loaded");
   }
 
   PercivalProcessPlugin::~PercivalProcessPlugin()
   {
     // TODO Auto-generated destructor stub
+  }
+
+  int PercivalProcessPlugin::get_version_major()
+  {
+    return ODIN_DATA_VERSION_MAJOR;
+  }
+
+  int PercivalProcessPlugin::get_version_minor()
+  {
+    return ODIN_DATA_VERSION_MINOR;
+  }
+
+  int PercivalProcessPlugin::get_version_patch()
+  {
+    return ODIN_DATA_VERSION_PATCH;
+  }
+
+  std::string PercivalProcessPlugin::get_version_short()
+  {
+    return ODIN_DATA_VERSION_STR_SHORT;
+  }
+
+  std::string PercivalProcessPlugin::get_version_long()
+  {
+    return ODIN_DATA_VERSION_STR;
   }
 
   void PercivalProcessPlugin::process_frame(boost::shared_ptr<Frame> frame)
@@ -58,7 +84,7 @@ namespace FrameProcessor
     boost::shared_ptr<Frame> reset_frame;
     reset_frame = boost::shared_ptr<Frame>(new Frame("reset"));
     reset_frame->set_frame_number(frame_counter_);
-    reset_frame->set_dimensions("reset", p2m_dims);
+    reset_frame->set_dimensions(p2m_dims);
     // Copy data into frame
     // TODO: This is a fudge as the Frame object will not permit write access to the memory
     // TODO: Frame object needs an init method and also write access.
@@ -83,7 +109,7 @@ namespace FrameProcessor
     boost::shared_ptr<Frame> data_frame;
     data_frame = boost::shared_ptr<Frame>(new Frame("data"));
     data_frame->set_frame_number(frame_counter_);
-    data_frame->set_dimensions("data", p2m_dims);
+    data_frame->set_dimensions(p2m_dims);
     // Copy data into frame
     // TODO: This is a fudge as the Frame object will not permit write access to the memory
     // TODO: Frame object needs an init method and also write access.

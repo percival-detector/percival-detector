@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <sstream>
 #include <arpa/inet.h>
+#include "version.h"
 
 using namespace FrameReceiver;
 
@@ -30,6 +31,31 @@ PercivalEmulatorFrameDecoder::PercivalEmulatorFrameDecoder() :
 
 PercivalEmulatorFrameDecoder::~PercivalEmulatorFrameDecoder()
 {
+}
+
+int PercivalEmulatorFrameDecoder::get_version_major()
+{
+  return ODIN_DATA_VERSION_MAJOR;
+}
+
+int PercivalEmulatorFrameDecoder::get_version_minor()
+{
+  return ODIN_DATA_VERSION_MINOR;
+}
+
+int PercivalEmulatorFrameDecoder::get_version_patch()
+{
+  return ODIN_DATA_VERSION_PATCH;
+}
+
+std::string PercivalEmulatorFrameDecoder::get_version_short()
+{
+  return ODIN_DATA_VERSION_STR_SHORT;
+}
+
+std::string PercivalEmulatorFrameDecoder::get_version_long()
+{
+  return ODIN_DATA_VERSION_STR;
 }
 
 //(LoggerPtr& logger, OdinData::IpcMessage& config_msg)
@@ -222,7 +248,7 @@ size_t PercivalEmulatorFrameDecoder::get_next_payload_size(void) const
     return next_receive_size;
 }
 
-FrameDecoder::FrameReceiveState PercivalEmulatorFrameDecoder::process_packet(size_t bytes_received)
+FrameDecoder::FrameReceiveState PercivalEmulatorFrameDecoder::process_packet(size_t bytes_received, int port, struct sockaddr_in* from_addr)
 {
 
     FrameDecoder::FrameReceiveState frame_state = FrameDecoder::FrameReceiveStateIncomplete;
@@ -302,6 +328,11 @@ void PercivalEmulatorFrameDecoder::monitor_buffers(void)
             << get_num_empty_buffers() << " empty buffers available, "
             << frames_timedout_ << " incomplete frames timed out");
     LOG4CXX_DEBUG_LEVEL(3, logger_, reference_packets_seen_ << " reference packets dropped");
+
+}
+
+void PercivalEmulatorFrameDecoder::get_status(const std::string param_prefix, OdinData::IpcMessage& status_msg)
+{
 
 }
 

@@ -18,8 +18,6 @@
 
 #include "PercivalEmulatorFrameDecoder.h"
 
-IMPLEMENT_DEBUG_LEVEL;
-
 class FrameDecoderTestFixture
 {
 public:
