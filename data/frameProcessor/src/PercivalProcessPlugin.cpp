@@ -10,9 +10,14 @@
 
 namespace FrameProcessor
 {
+    const std::string PercivalProcessPlugin::CONFIG_PROCESS             = "process";
+    const std::string PercivalProcessPlugin::CONFIG_PROCESS_NUMBER      = "number";
+    const std::string PercivalProcessPlugin::CONFIG_PROCESS_RANK        = "rank";
 
-  PercivalProcessPlugin::PercivalProcessPlugin() :
-          frame_counter_(0)
+    PercivalProcessPlugin::PercivalProcessPlugin() :
+    frame_counter_(0),
+    concurrent_processes_(1),
+    concurrent_rank_(0)
   {
     // Setup logging for the class
     logger_ = Logger::getLogger("FP.PercivalProcessPlugin");
@@ -25,10 +30,56 @@ namespace FrameProcessor
     // TODO Auto-generated destructor stub
   }
 
+  /**
+   * Set configuration options for the Percival processing plugin.
+   *
+   * This sets up the process plugin according to the configuration IpcMessage
+   * objects that are received. The options are searched for:
+   * CONFIG_PROCESS - Calls the method processConfig
+   *
+   * \param[in] config - IpcMessage containing configuration data.
+   * \param[out] reply - Response IpcMessage.
+   */
+  void PercivalProcessPlugin::configure(OdinData::IpcMessage& config, OdinData::IpcMessage& reply)
+  {
+    // Protect this method
+    LOG4CXX_INFO(logger_, config.encode());
+
+    // Check to see if we are configuring the process number and rank
+    if (config.has_param(PercivalProcessPlugin::CONFIG_PROCESS)) {
+      OdinData::IpcMessage processConfig(config.get_param<const rapidjson::Value&>(PercivalProcessPlugin::CONFIG_PROCESS));
+      this->configureProcess(processConfig, reply);
+    }
+  }
+
+  /**
+   * Set configuration options for the Percival process count.
+   *
+   * This sets up the process plugin according to the configuration IpcMessage
+   * objects that are received. The options are searched for:
+   * CONFIG_PROCESS_NUMBER - Sets the number of writer processes executing
+   * CONFIG_PROCESS_RANK - Sets the rank of this process
+   *
+   * \param[in] config - IpcMessage containing configuration data.
+   * \param[out] reply - Response IpcMessage.
+   */
+  void PercivalProcessPlugin::configureProcess(OdinData::IpcMessage& config, OdinData::IpcMessage& reply)
+  {
+    // Check for process number and rank number
+    if (config.has_param(PercivalProcessPlugin::CONFIG_PROCESS_NUMBER)) {
+      this->concurrent_processes_ = config.get_param<size_t>(PercivalProcessPlugin::CONFIG_PROCESS_NUMBER);
+      LOG4CXX_INFO(logger_, "Concurrent processes changed to " << this->concurrent_processes_);
+    }
+    if (config.has_param(PercivalProcessPlugin::CONFIG_PROCESS_RANK)) {
+      this->concurrent_rank_ = config.get_param<size_t>(PercivalProcessPlugin::CONFIG_PROCESS_RANK);
+      LOG4CXX_INFO(logger_, "Process rank changed to " << this->concurrent_rank_);
+    }
+  }
+
   bool PercivalProcessPlugin::reset_statistics()
   {
     LOG4CXX_INFO(logger_, "PercivalProcessPlugin reset_statistics called");
-    frame_counter_ = 0;
+    frame_counter_ = this->concurrent_rank_;
     return true;
   }
 
@@ -142,7 +193,7 @@ namespace FrameProcessor
     free(tmp_mem_ptr);
 
     // Increment local frame counter
-    frame_counter_++;
+    frame_counter_ += this->concurrent_processes_;
 
   }
 

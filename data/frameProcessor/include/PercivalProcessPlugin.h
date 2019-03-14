@@ -33,6 +33,8 @@ namespace FrameProcessor
   public:
     PercivalProcessPlugin();
     virtual ~PercivalProcessPlugin();
+    void configure(OdinData::IpcMessage &config, OdinData::IpcMessage &reply);
+    void configureProcess(OdinData::IpcMessage &config, OdinData::IpcMessage &reply);
     bool reset_statistics();
     int get_version_major();
     int get_version_minor();
@@ -41,10 +43,20 @@ namespace FrameProcessor
     std::string get_version_long();
 
   private:
+    /** Configuration constant for process related items */
+    static const std::string CONFIG_PROCESS;
+    /** Configuration constant for number of processes */
+    static const std::string CONFIG_PROCESS_NUMBER;
+    /** Configuration constant for this process rank */
+    static const std::string CONFIG_PROCESS_RANK;
+
     void process_frame(boost::shared_ptr<Frame> frame);
 
     /** Pointer to logger */
     LoggerPtr logger_;
+
+    size_t concurrent_processes_;
+    size_t concurrent_rank_;
 
     /* Frame counter */
     uint32_t frame_counter_;
