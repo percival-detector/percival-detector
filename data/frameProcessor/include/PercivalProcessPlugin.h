@@ -33,7 +33,7 @@ namespace FrameProcessor
   public:
     PercivalProcessPlugin();
     virtual ~PercivalProcessPlugin();
-
+    bool reset_statistics();
     int get_version_major();
     int get_version_minor();
     int get_version_patch();

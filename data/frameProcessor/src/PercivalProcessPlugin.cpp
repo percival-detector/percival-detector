@@ -25,6 +25,13 @@ namespace FrameProcessor
     // TODO Auto-generated destructor stub
   }
 
+  bool PercivalProcessPlugin::reset_statistics()
+  {
+    LOG4CXX_INFO(logger_, "PercivalProcessPlugin reset_statistics called");
+    frame_counter_ = 0;
+    return true;
+  }
+
   int PercivalProcessPlugin::get_version_major()
   {
     return ODIN_DATA_VERSION_MAJOR;
