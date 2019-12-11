@@ -6,6 +6,7 @@
  */
 
 #include <PercivalProcessPlugin.h>
+#include <DataBlockFrame.h>
 #include "version.h"
 
 namespace FrameProcessor
@@ -121,7 +122,7 @@ namespace FrameProcessor
     size_t bytes_per_subframe_row = p2m_subframe_dims[1]*bytes_per_pixel;
 
     // Read out the frame header from the raw frame
-    const PercivalEmulator::FrameHeader* hdrPtr = static_cast<const PercivalEmulator::FrameHeader*>(frame->get_data());
+    const PercivalEmulator::FrameHeader* hdrPtr = static_cast<const PercivalEmulator::FrameHeader*>(frame->get_data_ptr());
     LOG4CXX_TRACE(logger_, "Raw frame number: " << hdrPtr->frame_number << " offset frame number: " << frame_counter_);
 
     // Raw frame arrive as two sub-frames stored incorrectly in memory
@@ -139,15 +140,12 @@ namespace FrameProcessor
     // into the new frame
     void *tmp_mem_ptr = malloc(PercivalEmulator::data_type_size);
 
-    boost::shared_ptr<Frame> reset_frame;
-    reset_frame = boost::shared_ptr<Frame>(new Frame("reset"));
-    reset_frame->set_frame_number(frame_counter_);
-    reset_frame->set_dimensions(p2m_dims);
     // Copy data into frame
     // TODO: This is a fudge as the Frame object will not permit write access to the memory
     // TODO: Frame object needs an init method and also write access.
     char *dest_ptr = (char *)tmp_mem_ptr;
-    const char *src_ptr = (static_cast<const char*>(frame->get_data())+sizeof(PercivalEmulator::FrameHeader)+PercivalEmulator::data_type_size);
+    // can we use get_image_ptr() here?
+    const char *src_ptr = (static_cast<const char*>(frame->get_data_ptr())+sizeof(PercivalEmulator::FrameHeader)+PercivalEmulator::data_type_size);
     for (int row = 0; row < p2m_dims[0]; row++){
     	// Copy the first half of the row
     	memcpy(dest_ptr, src_ptr, bytes_per_subframe_row);
@@ -159,20 +157,22 @@ namespace FrameProcessor
     	src_ptr += bytes_per_subframe_row;
     	dest_ptr += bytes_per_subframe_row;
     }
-    // Copy data into frame
-    reset_frame->copy_data(tmp_mem_ptr, PercivalEmulator::data_type_size);
+
+    FrameMetaData md = frame->meta_data();
+    md.set_dataset_name("reset");
+    md.set_frame_number(frame_counter_);
+    md.set_dimensions(p2m_dims);
+    boost::shared_ptr<Frame> reset_frame;
+    reset_frame.reset(new DataBlockFrame(md, tmp_mem_ptr, PercivalEmulator::data_type_size));
+
     LOG4CXX_TRACE(logger_, "Pushing reset frame.");
     this->push(reset_frame);
 
-    boost::shared_ptr<Frame> data_frame;
-    data_frame = boost::shared_ptr<Frame>(new Frame("data"));
-    data_frame->set_frame_number(frame_counter_);
-    data_frame->set_dimensions(p2m_dims);
     // Copy data into frame
     // TODO: This is a fudge as the Frame object will not permit write access to the memory
     // TODO: Frame object needs an init method and also write access.
     dest_ptr = (char *)tmp_mem_ptr;
-    src_ptr = (static_cast<const char*>(frame->get_data())+sizeof(PercivalEmulator::FrameHeader));
+    src_ptr = (static_cast<const char*>(frame->get_data_ptr())+sizeof(PercivalEmulator::FrameHeader));
     for (int row = 0; row < p2m_dims[0]; row++){
     	// Copy the first half of the row
     	memcpy(dest_ptr, src_ptr, bytes_per_subframe_row);
@@ -184,8 +184,10 @@ namespace FrameProcessor
     	src_ptr += bytes_per_subframe_row;
     	dest_ptr += bytes_per_subframe_row;
     }
-    // Copy data into frame
-    data_frame->copy_data(tmp_mem_ptr, PercivalEmulator::data_type_size);
+
+    md.set_dataset_name("data");
+    boost::shared_ptr<Frame> data_frame;
+    data_frame.reset(new DataBlockFrame(md, tmp_mem_ptr, PercivalEmulator::data_type_size));
     LOG4CXX_TRACE(logger_, "Pushing data frame.");
     this->push(data_frame);
 
