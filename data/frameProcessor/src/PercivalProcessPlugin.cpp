@@ -138,12 +138,17 @@ namespace FrameProcessor
     // These need to be shuffled into correct continuous memory format
     // Loop over each row, copying the row from sub-frame 1 and then sub-frame 2
     // into the new frame
-    void *tmp_mem_ptr = malloc(PercivalEmulator::data_type_size);
+    FrameMetaData md = frame->meta_data();
+    md.set_dataset_name("reset");
+    md.set_frame_number(frame_counter_);
+    md.set_dimensions(p2m_dims);
+    boost::shared_ptr<Frame> reset_frame;
+    reset_frame.reset(new DataBlockFrame(md, PercivalEmulator::data_type_size));
 
     // Copy data into frame
     // TODO: This is a fudge as the Frame object will not permit write access to the memory
     // TODO: Frame object needs an init method and also write access.
-    char *dest_ptr = (char *)tmp_mem_ptr;
+    char *dest_ptr = (char *)reset_frame->get_data_ptr();
     // can we use get_image_ptr() here?
     const char *src_ptr = (static_cast<const char*>(frame->get_data_ptr())+sizeof(PercivalEmulator::FrameHeader)+PercivalEmulator::data_type_size);
     for (int row = 0; row < p2m_dims[0]; row++){
@@ -158,20 +163,17 @@ namespace FrameProcessor
     	dest_ptr += bytes_per_subframe_row;
     }
 
-    FrameMetaData md = frame->meta_data();
-    md.set_dataset_name("reset");
-    md.set_frame_number(frame_counter_);
-    md.set_dimensions(p2m_dims);
-    boost::shared_ptr<Frame> reset_frame;
-    reset_frame.reset(new DataBlockFrame(md, tmp_mem_ptr, PercivalEmulator::data_type_size));
-
     LOG4CXX_TRACE(logger_, "Pushing reset frame.");
     this->push(reset_frame);
+
+    md.set_dataset_name("data");
+    boost::shared_ptr<Frame> data_frame;
+    data_frame.reset(new DataBlockFrame(md, PercivalEmulator::data_type_size));
 
     // Copy data into frame
     // TODO: This is a fudge as the Frame object will not permit write access to the memory
     // TODO: Frame object needs an init method and also write access.
-    dest_ptr = (char *)tmp_mem_ptr;
+    dest_ptr = (char *)data_frame->get_data_ptr();
     src_ptr = (static_cast<const char*>(frame->get_data_ptr())+sizeof(PercivalEmulator::FrameHeader));
     for (int row = 0; row < p2m_dims[0]; row++){
     	// Copy the first half of the row
@@ -185,14 +187,8 @@ namespace FrameProcessor
     	dest_ptr += bytes_per_subframe_row;
     }
 
-    md.set_dataset_name("data");
-    boost::shared_ptr<Frame> data_frame;
-    data_frame.reset(new DataBlockFrame(md, tmp_mem_ptr, PercivalEmulator::data_type_size));
     LOG4CXX_TRACE(logger_, "Pushing data frame.");
     this->push(data_frame);
-
-    // Free temporary memory allocation
-    free(tmp_mem_ptr);
 
     // Increment local frame counter
     frame_counter_ += this->concurrent_processes_;
