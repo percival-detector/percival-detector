@@ -7,5 +7,6 @@ include_directories(${FRAMEPROCESSOR_DIR}/include ${ODINDATA_INCLUDE_DIRS}
 
 # Add library for excalibur plugin
 add_library(PercivalProcessPlugin SHARED PercivalProcessPlugin.cpp)
+add_library(PercivalProcess2Plugin SHARED PercivalProcess2Plugin.cpp)
 
-install(TARGETS PercivalProcessPlugin LIBRARY DESTINATION lib)
+install(TARGETS PercivalProcess2Plugin PercivalProcessPlugin LIBRARY DESTINATION lib)
