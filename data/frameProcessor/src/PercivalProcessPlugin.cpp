@@ -142,6 +142,7 @@ namespace FrameProcessor
     md.set_dataset_name("reset");
     md.set_frame_number(frame_counter_);
     md.set_dimensions(p2m_dims);
+    md.set_data_type(FrameProcessor::raw_16bit);
     boost::shared_ptr<Frame> reset_frame;
     reset_frame.reset(new DataBlockFrame(md, PercivalEmulator::data_type_size));
 
