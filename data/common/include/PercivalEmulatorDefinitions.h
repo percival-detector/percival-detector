@@ -69,6 +69,17 @@ namespace PercivalEmulator {
         uint8_t raw[packet_header_size];
     } PacketHeader;
 
+    struct PacketHeaderFields
+    {
+        uint16_t m_pixel_data_size;
+        uint8_t m_packet_type;
+        uint8_t m_subframe_number;
+        uint32_t m_frame_number;
+        uint16_t m_packet_number;
+        uint16_t m_packet_offset;
+        uint8_t m_frame_info[42];
+    }  __attribute__ ((packed));
+
     typedef enum
     {
         PacketTypeSample = 0,
