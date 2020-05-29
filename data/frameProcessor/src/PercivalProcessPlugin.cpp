@@ -138,7 +138,23 @@ namespace FrameProcessor
     // These need to be shuffled into correct continuous memory format
     // Loop over each row, copying the row from sub-frame 1 and then sub-frame 2
     // into the new frame
+    char* dest_ptr;
+    const char *src_ptr;
     FrameMetaData md = frame->meta_data();
+    dimensions_t info_dims{1, PercivalEmulator::frame_info_size};
+    md.set_dataset_name("info");
+    md.set_frame_number(frame_counter_);
+    md.set_dimensions(info_dims);
+    md.set_data_type(FrameProcessor::raw_8bit);
+    boost::shared_ptr<Frame> info_frame;
+    info_frame.reset(new DataBlockFrame(md, PercivalEmulator::frame_info_size));
+    dest_ptr = (char *)info_frame->get_data_ptr();
+    src_ptr = (char const*)hdrPtr->frame_info;
+    memcpy(dest_ptr, src_ptr, PercivalEmulator::frame_info_size);
+
+    LOG4CXX_TRACE(logger_, "Pushing info frame.");
+    this->push(info_frame);
+
     md.set_dataset_name("reset");
     md.set_frame_number(frame_counter_);
     md.set_dimensions(p2m_dims);
@@ -149,9 +165,9 @@ namespace FrameProcessor
     // Copy data into frame
     // TODO: This is a fudge as the Frame object will not permit write access to the memory
     // TODO: Frame object needs an init method and also write access.
-    char *dest_ptr = (char *)reset_frame->get_data_ptr();
+    dest_ptr = (char *)reset_frame->get_data_ptr();
     // can we use get_image_ptr() here?
-    const char *src_ptr = (static_cast<const char*>(frame->get_data_ptr())+sizeof(PercivalEmulator::FrameHeader)+PercivalEmulator::data_type_size);
+    src_ptr = (static_cast<const char*>(frame->get_data_ptr())+sizeof(PercivalEmulator::FrameHeader)+PercivalEmulator::data_type_size);
     for (int row = 0; row < p2m_dims[0]; row++){
     	// Copy the first half of the row
     	memcpy(dest_ptr, src_ptr, bytes_per_subframe_row);
@@ -188,12 +204,25 @@ namespace FrameProcessor
     	dest_ptr += bytes_per_subframe_row;
     }
 
-    LOG4CXX_TRACE(logger_, "Pushing data frame.");
+    // the data frame is conventionally last, and setting this master_dataset on the FW
+    // tells it when to move on.
+    LOG4CXX_TRACE(logger_, "Pushing data frame last.");
     this->push(data_frame);
 
+    // To configure the FileWriter to save these frames, you will need some json terms like this:
+    //   "reset": {
+    //      "datatype": "uint16",
+    //      "dims": [1484, 1408],
+    //      "chunks": [1, 1484, 1408]
+    //    },
+    //    "info": {
+    //      "datatype": "uint8",
+    //      "dims": [1,42],
+    //      "chunks": [1, 1, 42]
+    //    }  
+    
     // Increment local frame counter
     frame_counter_ += this->concurrent_processes_;
-
   }
 
 } /* namespace FrameProcessor */
