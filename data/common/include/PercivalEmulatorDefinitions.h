@@ -69,6 +69,7 @@ namespace PercivalEmulator {
         uint8_t raw[packet_header_size];
     } PacketHeader;
 
+    // this is what appears at the start of a UDP payload from the detector
     struct PacketHeaderFields
     {
         uint16_t m_pixel_data_size;
@@ -77,7 +78,7 @@ namespace PercivalEmulator {
         uint32_t m_frame_number;
         uint16_t m_packet_number;
         uint16_t m_packet_offset;
-        uint8_t m_frame_info[42];
+        uint8_t m_frame_info[frame_info_size];
     }  __attribute__ ((packed));
 
     typedef enum
@@ -86,6 +87,7 @@ namespace PercivalEmulator {
         PacketTypeReset  = 1,
     } PacketType;
 
+    // this is what appears at the start of a shared-mem buffer that arrives at the FP.
     typedef struct
     {
         uint32_t frame_number;

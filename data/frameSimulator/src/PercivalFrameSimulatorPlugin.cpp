@@ -150,6 +150,7 @@ namespace FrameSimulator {
                         pHeader->m_subframe_number = sf;
                         pHeader->m_frame_number = htonl(fr);
                         pHeader->m_packet_number = htons(pk);
+                        memset(pHeader->m_frame_info, 0x98, PercivalEmulator::frame_info_size);
 
                         uint16_t* pixels = static_cast<uint16_t*>(buf)+PercivalEmulator::packet_header_size/2;
                         for(int pix=0;pix<PercivalEmulator::primary_packet_size/2;++pix)
