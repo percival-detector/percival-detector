@@ -89,9 +89,9 @@ BOOST_AUTO_TEST_CASE(calibrationADC)
     {
        for(int c=0;c<cols;++c)
        {
-           if(isnan(output.at(r,c)))
+           if(std::isnan(output.at(r,c)))
            {
-              BOOST_CHECK(isnan(correct.at(r,c)));
+              BOOST_CHECK(std::isnan(correct.at(r,c)));
            }
            else if( 0.01f < fabs( output.at(r,c)-correct.at(r,c) ) )
            {
@@ -133,9 +133,9 @@ BOOST_AUTO_TEST_CASE(sampleCMACDA)
     {
        for(int c=0;c<cols;++c)
        {
-           if(isnan(output.at(r,c)))
+           if(std::isnan(output.at(r,c)))
            {
-              if(!isnan(correct.at(r,c)))
+              if(!std::isnan(correct.at(r,c)))
               {
                  std::cout << "nan mismatch at " << r << "," << c << " output nan, correct is " << correct.at(r,c) << std::endl;
                  BOOST_CHECK(false);
@@ -184,9 +184,9 @@ BOOST_AUTO_TEST_CASE(sampleCDA_LAT)
        int countNumPixelsG0 = 0;
        for(int c=0;c<cols;++c)
        {
-           if(isnan(output.at(r,c)))
+           if(std::isnan(output.at(r,c)))
            {
-              if(!isnan(correct.at(r,c)))
+              if(!std::isnan(correct.at(r,c)))
               {
                  std::cout << "nan mismatch at " << r << "," << c << " output nan, correct is " << correct.at(r,c) << std::endl;
                  BOOST_CHECK(false);
@@ -249,9 +249,9 @@ BOOST_AUTO_TEST_CASE(sampleCMA_CDA_LAT)
        int countNumPixelsG0 = 0;
        for(int c=0;c<cols;++c)
        {
-           if(isnan(output.at(r,c)))
+           if(std::isnan(output.at(r,c)))
            {
-              if(!isnan(correct.at(r,c)))
+              if(!std::isnan(correct.at(r,c)))
               {
                  std::cout << "nan mismatch at " << r << "," << c << " output nan, correct is " << correct.at(r,c) << std::endl;
                  BOOST_CHECK(false);
@@ -296,9 +296,9 @@ BOOST_AUTO_TEST_CASE(sampleCMA_CDA_LAT)
     {
        for(int c=0;c<cols;++c)
        {
-           if(isnan(output.at(r,c)))
+           if(std::isnan(output.at(r,c)))
            {
-              if(!isnan(correct.at(r,c)))
+              if(!std::isnan(correct.at(r,c)))
               {
                  std::cout << "nan mismatch at " << r << "," << c << " output nan, correct is " << correct.at(r,c) << std::endl;
                  BOOST_CHECK(false);
