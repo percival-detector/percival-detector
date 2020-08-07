@@ -236,7 +236,7 @@ BOOST_AUTO_TEST_CASE(CalibratorLatPedGain)
     BOOST_CHECK_CLOSE(output.at(0,0), k4 * (idOf - k1), smallPercent);
     BOOST_CHECK_CLOSE(output.at(0,1), k5 * (idOf - k2), smallPercent);
     BOOST_CHECK_CLOSE(output.at(0,2), k6 * (idOf - k3), smallPercent);
-    BOOST_CHECK(isnan(output.at(0,3)));
+    BOOST_CHECK(std::isnan(output.at(0,3)));
 
 }
 
@@ -282,11 +282,11 @@ BOOST_AUTO_TEST_CASE(CalibratorAlgNanOk)
     {
         if( c==0 || c==1 )
         {
-            BOOST_CHECK( isnan(output1.at(0,c)) );
+            BOOST_CHECK( std::isnan(output1.at(0,c)) );
         }
         else
         {
-            BOOST_CHECK( !isnan(output1.at(0,c)) );
+            BOOST_CHECK( !std::isnan(output1.at(0,c)) );
         }
     }
 }
@@ -359,7 +359,7 @@ BOOST_AUTO_TEST_CASE(CalibratorCMA_nan)
         }
         else
         {
-            BOOST_CHECK(isnan(pic.at(0,c)));
+            BOOST_CHECK(std::isnan(pic.at(0,c)));
         }
     }
 }
