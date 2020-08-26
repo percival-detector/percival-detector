@@ -15,14 +15,15 @@
 
 using namespace FrameReceiver;
 
+static const int DUMMY_BUFFER = -10;
+
 PercivalEmulatorFrameDecoder::PercivalEmulatorFrameDecoder() :
         FrameDecoderUDP(),
 		current_frame_seen_(-1),
 		current_frame_buffer_id_(-1),
 		current_frame_buffer_(0),
 		current_frame_header_(0),
-		reference_packets_seen_(0),
-		dropping_frame_data_(false)
+		reference_packets_seen_(0)
 {
     current_packet_header_.reset(new uint8_t[sizeof(PercivalEmulator::PacketHeader)]);
     dropped_frame_buffer_.reset(new uint8_t[PercivalEmulator::total_frame_size]);
@@ -152,18 +153,17 @@ void PercivalEmulatorFrameDecoder::process_packet_header(size_t bytes_received, 
     if (frame != current_frame_seen_)
     {
         current_frame_seen_ = frame;
+        bool bNeedInitializeHeader = false;
 
-    	if (frame_buffer_map_.count(current_frame_seen_) == 0)
+    	if (frame_buffer_map_.count(current_frame_seen_) == 0 && frames_we_drop_.count(current_frame_seen_) == 0)
     	{
+            // new frame appears, allocate a buffer for it.
     	    if (empty_buffer_queue_.empty())
             {
-                current_frame_buffer_ = dropped_frame_buffer_.get();
 
-    	        if (!dropping_frame_data_)
-                {
-                    LOG4CXX_ERROR(logger_, "First packet from frame " << current_frame_seen_ << " detected but no free buffers available. Dropping packet data for this frame");
-                    dropping_frame_data_ = true;
-                }
+                LOG4CXX_ERROR(logger_, "First packet from frame " << current_frame_seen_ << " detected but no free buffers available. Dropping packet data for this frame");
+                frames_we_drop_[current_frame_seen_] = DUMMY_BUFFER;
+
             }
     	    else
     	    {
@@ -171,36 +171,38 @@ void PercivalEmulatorFrameDecoder::process_packet_header(size_t bytes_received, 
                 current_frame_buffer_id_ = empty_buffer_queue_.front();
                 empty_buffer_queue_.pop();
                 frame_buffer_map_[current_frame_seen_] = current_frame_buffer_id_;
-                current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
 
-                if (!dropping_frame_data_)
-                {
-                    LOG4CXX_DEBUG_LEVEL(2, logger_, "First packet from frame " << current_frame_seen_ << " detected, allocating frame buffer ID " << current_frame_buffer_id_);
-                }
-                else
-                {
-                    dropping_frame_data_ = false;
-                    LOG4CXX_DEBUG_LEVEL(2, logger_, "Free buffer now available for frame " << current_frame_seen_ << ", allocating frame buffer ID " << current_frame_buffer_id_);
-                }
+                LOG4CXX_DEBUG_LEVEL(2, logger_, "First packet from frame " << current_frame_seen_ << " detected, allocating frame buffer ID " << current_frame_buffer_id_);
+
     	    }
+            bNeedInitializeHeader = true;
 
-    	    // Initialise frame header
-            current_frame_header_ = reinterpret_cast<PercivalEmulator::FrameHeader*>(current_frame_buffer_);
+    	}
+
+        // select the right buffer for this frame
+    	if(frame_buffer_map_.count(current_frame_seen_))
+    	{
+    		current_frame_buffer_id_ = frame_buffer_map_[current_frame_seen_];
+        	current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
+    	}
+        else if(frames_we_drop_.count(current_frame_seen_))
+        {
+            current_frame_buffer_id_ = DUMMY_BUFFER;
+            current_frame_buffer_ = dropped_frame_buffer_.get();
+        }
+        current_frame_header_ = reinterpret_cast<PercivalEmulator::FrameHeader*>(current_frame_buffer_);
+
+        // initialize the header if it's a new one
+        if(bNeedInitializeHeader)
+        {
+   	        // Initialise frame header
             current_frame_header_->frame_number = current_frame_seen_;
             current_frame_header_->frame_state = FrameDecoder::FrameReceiveStateIncomplete;
             current_frame_header_->packets_received = 0;
             memset(current_frame_header_->packet_state, 0, PercivalEmulator::num_frame_packets);
             memcpy(current_frame_header_->frame_info, get_frame_info(), PercivalEmulator::frame_info_size);
             gettime(reinterpret_cast<struct timespec*>(&(current_frame_header_->frame_start_time)));
-
-    	}
-    	else
-    	{
-    		current_frame_buffer_id_ = frame_buffer_map_[current_frame_seen_];
-        	current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
-        	current_frame_header_ = reinterpret_cast<PercivalEmulator::FrameHeader*>(current_frame_buffer_);
-    	}
-
+        }
     }
 
     // Update packet_number state map in frame header
@@ -253,33 +255,34 @@ FrameDecoder::FrameReceiveState PercivalEmulatorFrameDecoder::process_packet(siz
 
     FrameDecoder::FrameReceiveState frame_state = FrameDecoder::FrameReceiveStateIncomplete;
 
-    if (get_subframe_number() != PercivalEmulator::reference_packet_subframe_number)
+    if(current_frame_buffer_id_ != DUMMY_BUFFER)
     {
-        current_frame_header_->packets_received++;
+        if (get_subframe_number() != PercivalEmulator::reference_packet_subframe_number)
+        {
+            current_frame_header_->packets_received++;
+        }
+
+	    if (current_frame_header_->packets_received == PercivalEmulator::num_frame_packets)
+	    {
+
+	        // Set frame state accordingly
+		    frame_state = FrameDecoder::FrameReceiveStateComplete;
+
+		    // Complete frame header
+		    current_frame_header_->frame_state = frame_state;
+
+		    // Erase frame from buffer map
+		    frame_buffer_map_.erase(current_frame_seen_);
+
+		    // Notify main thread that frame is ready
+		    ready_callback_(current_frame_buffer_id_, current_frame_seen_);
+
+		    // Reset current frame seen ID so that if next frame has same number (e.g. repeated
+		    // sends of single frame 0), it is detected properly
+		    current_frame_seen_ = -1;
+
+	    }
     }
-
-	if (current_frame_header_->packets_received == PercivalEmulator::num_frame_packets)
-	{
-
-	    // Set frame state accordingly
-		frame_state = FrameDecoder::FrameReceiveStateComplete;
-
-		// Complete frame header
-		current_frame_header_->frame_state = frame_state;
-
-		if (!dropping_frame_data_)
-		{
-			// Erase frame from buffer map
-			frame_buffer_map_.erase(current_frame_seen_);
-
-			// Notify main thread that frame is ready
-			ready_callback_(current_frame_buffer_id_, current_frame_seen_);
-
-			// Reset current frame seen ID so that if next frame has same number (e.g. repeated
-			// sends of single frame 0), it is detected properly
-			current_frame_seen_ = -1;
-		}
-	}
 
 	return frame_state;
 }
@@ -292,7 +295,7 @@ void PercivalEmulatorFrameDecoder::monitor_buffers(void)
 
     gettime(&current_time);
 
-    // Loop over frame buffers currently in map and check their state
+    // Loop over frame buffers currently in map and forward old ones
     std::map<int, int>::iterator buffer_map_iter = frame_buffer_map_.begin();
     while (buffer_map_iter != frame_buffer_map_.end())
     {
@@ -329,6 +332,11 @@ void PercivalEmulatorFrameDecoder::monitor_buffers(void)
             << frames_timedout_ << " incomplete frames timed out");
     LOG4CXX_DEBUG_LEVEL(3, logger_, reference_packets_seen_ << " reference packets dropped");
 
+    // iterate over frames that go to dummy buffer and delete the old ones
+    while(3<frames_we_drop_.size())
+    {
+        frames_we_drop_.erase(frames_we_drop_.begin());
+    }
 }
 
 void PercivalEmulatorFrameDecoder::get_status(const std::string param_prefix, OdinData::IpcMessage& status_msg)
@@ -383,7 +391,7 @@ uint8_t* PercivalEmulatorFrameDecoder::raw_packet_header(void) const
 }
 
 
-unsigned int PercivalEmulatorFrameDecoder::elapsed_ms(struct timespec& start, struct timespec& end)
+inline unsigned int PercivalEmulatorFrameDecoder::elapsed_ms(struct timespec& start, struct timespec& end)
 {
 
     double start_ns = ((double)start.tv_sec * 1000000000) + start.tv_nsec;

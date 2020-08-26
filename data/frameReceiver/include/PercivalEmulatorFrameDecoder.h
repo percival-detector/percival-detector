@@ -77,7 +77,7 @@ namespace FrameReceiver
 
         unsigned int reference_packets_seen_;
 
-        bool dropping_frame_data_;
+        std::map<int,int> frames_we_drop_;
 
     };
 
