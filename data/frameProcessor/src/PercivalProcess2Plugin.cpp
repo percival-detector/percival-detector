@@ -6,7 +6,7 @@
 
 namespace FrameProcessor
 {
-    const std::string PercivalProcess2Plugin::CONFIG_PROCESS             = "process2";
+    const std::string PercivalProcess2Plugin::CONFIG_PROCESS             = "process";
     const std::string PercivalProcess2Plugin::CONFIG_PROCESS_NUMBER      = "number";
     const std::string PercivalProcess2Plugin::CONFIG_PROCESS_RANK        = "rank";
 
@@ -15,15 +15,12 @@ namespace FrameProcessor
     concurrent_processes_(1),
     concurrent_rank_(0)
   {
-    // Setup logging for the class
     logger_ = Logger::getLogger("FP.PercivalProcess2Plugin");
-    logger_->setLevel(Level::getAll());
     LOG4CXX_INFO(logger_, "PercivalProcess2Plugin version " << this->get_version_long() << " loaded");
   }
 
   PercivalProcess2Plugin::~PercivalProcess2Plugin()
   {
-    // TODO Auto-generated destructor stub
   }
 
   /**
@@ -129,7 +126,6 @@ namespace FrameProcessor
 
     LOG4CXX_TRACE(logger_, "Pushing data frame.");
     this->push(data_frame);
-
 
     md.set_dataset_name("reset");
     boost::shared_ptr<Frame> reset_frame;
