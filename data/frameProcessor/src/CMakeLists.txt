@@ -7,6 +7,7 @@ include_directories(${FRAMEPROCESSOR_DIR}/include ${ODINDATA_INCLUDE_DIRS}
 
 add_library(PercivalProcessPlugin SHARED PercivalProcessPlugin.cpp)
 add_library(PercivalProcess2Plugin SHARED PercivalProcess2Plugin.cpp)
+add_library(PercivalProcess3Plugin SHARED PercivalProcess3Plugin.cpp)
 add_library(PercivalGenPlugin SHARED PercivalGenPlugin.cpp)
 add_library(PercivalCalibPlugin SHARED PercivalCalibPlugin.cpp)
 
@@ -19,7 +20,7 @@ target_link_libraries(PercivalCalib PUBLIC libtbb.so ${HDF5_ROOT}/lib/libhdf5.so
 
 target_link_libraries(PercivalCalibPlugin PercivalCalib)
 
-install(TARGETS PercivalProcessPlugin PercivalProcess2Plugin PercivalGenPlugin PercivalCalibPlugin LIBRARY DESTINATION lib)
+install(TARGETS PercivalProcessPlugin PercivalProcess2Plugin PercivalProcess3Plugin PercivalGenPlugin PercivalCalibPlugin LIBRARY DESTINATION lib)
 
 # this bit of fun is to help us see what link deps are missing from PercivalCalib
 # cos it won't load in the fp if there are missing deps
