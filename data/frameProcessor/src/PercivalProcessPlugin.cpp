@@ -9,6 +9,10 @@
 #include <DataBlockFrame.h>
 #include "version.h"
 
+#include <limits>
+
+static constexpr int64_t UNSET = std::numeric_limits<int64_t>::max();
+
 namespace FrameProcessor
 {
     const std::string PercivalProcessPlugin::CONFIG_PROCESS             = "process";
@@ -16,13 +20,12 @@ namespace FrameProcessor
     const std::string PercivalProcessPlugin::CONFIG_PROCESS_RANK        = "rank";
 
     PercivalProcessPlugin::PercivalProcessPlugin() :
-    frame_counter_(0),
+    frame_base_(UNSET),
     concurrent_processes_(1),
     concurrent_rank_(0)
   {
     // Setup logging for the class
     logger_ = Logger::getLogger("FP.PercivalProcessPlugin");
-    logger_->setLevel(Level::getAll());
     LOG4CXX_INFO(logger_, "PercivalProcessPlugin version " << this->get_version_long() << " loaded");
   }
 
@@ -80,7 +83,7 @@ namespace FrameProcessor
   bool PercivalProcessPlugin::reset_statistics()
   {
     LOG4CXX_INFO(logger_, "PercivalProcessPlugin reset_statistics called");
-    frame_counter_ = this->concurrent_rank_;
+    frame_base_ = UNSET;
     return true;
   }
 
@@ -123,7 +126,13 @@ namespace FrameProcessor
 
     // Read out the frame header from the raw frame
     const PercivalEmulator::FrameHeader* hdrPtr = static_cast<const PercivalEmulator::FrameHeader*>(frame->get_data_ptr());
-    LOG4CXX_TRACE(logger_, "Raw frame number: " << hdrPtr->frame_number << " offset frame number: " << frame_counter_);
+    if(frame_base_==UNSET)
+    {
+        // we need hdrPtr->frame_number + frame_base_ == concurrent_rank_ for this first frame
+        // see Acquisition::adjust_frame_offset()
+        frame_base_ = (int64_t)concurrent_rank_ - (int64_t)hdrPtr->frame_number;
+        LOG4CXX_INFO(logger_, "first frame after resetst seen, frame_base set to: " << frame_base_);
+    }
 
     // Raw frame arrive as two sub-frames stored incorrectly in memory
     // -------------------
@@ -143,7 +152,8 @@ namespace FrameProcessor
     FrameMetaData md = frame->meta_data();
     dimensions_t info_dims{1, PercivalEmulator::frame_info_size};
     md.set_dataset_name("info");
-    md.set_frame_number(frame_counter_);
+    md.set_frame_number(hdrPtr->frame_number);
+    md.set_frame_offset(frame_base_);
     md.set_dimensions(info_dims);
     md.set_data_type(FrameProcessor::raw_8bit);
     boost::shared_ptr<Frame> info_frame;
@@ -156,7 +166,6 @@ namespace FrameProcessor
     this->push(info_frame);
 
     md.set_dataset_name("reset");
-    md.set_frame_number(frame_counter_);
     md.set_dimensions(p2m_dims);
     md.set_data_type(FrameProcessor::raw_16bit);
     boost::shared_ptr<Frame> reset_frame;
@@ -221,8 +230,6 @@ namespace FrameProcessor
     //      "chunks": [1, 1, 42]
     //    }  
     
-    // Increment local frame counter
-    frame_counter_ += this->concurrent_processes_;
   }
 
 } /* namespace FrameProcessor */

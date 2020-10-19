@@ -33,22 +33,14 @@ namespace FrameProcessor
   {
     // Setup logging for the class
     logger_ = Logger::getLogger("FP.PercivalGenPlugin");
-    logger_->setLevel(Level::getAll());
-    log4cxx::LayoutPtr layout(new log4cxx::SimpleLayout());
-    FileAppender* appender(new FileAppender(layout, "wlog.txt", false));
-    logger_->removeAllAppenders();
-    logger_->addAppender(appender);
-  //  auto l = logger_->getAllAppenders();
 
     LOG4CXX_INFO(logger_, "PercivalGenPlugin version " << this->get_version_long() << " loaded");
-
 
     mythread_ = std::move(std::thread(&PercivalGenPlugin::threadfn, this));
   }
 
   PercivalGenPlugin::~PercivalGenPlugin()
   {
-    // TODO Auto-generated destructor stub
   }
 
   /**

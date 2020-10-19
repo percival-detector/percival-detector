@@ -36,15 +36,7 @@ namespace FrameProcessor
     m_calibratorReset(FRAME_ROWS, FRAME_COLS),
     m_calibratorSample(FRAME_ROWS, FRAME_COLS)
   {
-    // Setup logging for the class
     logger_ = Logger::getLogger("FP.PercivalCalibPlugin");
-    logger_->setLevel(Level::getAll());
-   // log4cxx::LayoutPtr layout(new log4cxx::SimpleLayout());
-  //  FileAppender* appender(new FileAppender(layout, "wlog.txt", false));
-  //  logger_->removeAllAppenders();
- //   logger_->addAppender(appender);
-  //  auto l = logger_->getAllAppenders();
-
 
     LOG4CXX_INFO(logger_, "PercivalCalibPlugin version " << this->get_version_long() << " loaded");
 
@@ -52,7 +44,6 @@ namespace FrameProcessor
 
   PercivalCalibPlugin::~PercivalCalibPlugin()
   {
-    // TODO Auto-generated destructor stub
   }
 
   /**

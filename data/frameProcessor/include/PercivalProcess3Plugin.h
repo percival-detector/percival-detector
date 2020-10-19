@@ -1,12 +1,6 @@
-/*
- * PercivalProcessPlugin.h
- *
- *  Created on: 7 Jun 2016
- *      Author: gnx91527
- */
 
-#ifndef TOOLS_FILEWRITER_PERCIVALPROCESSPLUGIN_H_
-#define TOOLS_FILEWRITER_PERCIVALPROCESSPLUGIN_H_
+#ifndef TOOLS_FILEWRITER_PERCIVALPROCESS3PLUGIN_H_
+#define TOOLS_FILEWRITER_PERCIVALPROCESS3PLUGIN_H_
 
 #include <log4cxx/logger.h>
 #include <log4cxx/basicconfigurator.h>
@@ -24,16 +18,18 @@ namespace FrameProcessor
 
   /** Processing of Percival Frame objects.
    *
-   * The PercivalProcessPlugin class is currently responsible for receiving a raw data
-   * Frame object and parsing the header information, before splitting the raw data into
+   * The PercivalProcess3Plugin class is responsible for receiving a raw data
+   * Frame object and parsing the header information, splitting the raw data into
    * the two "data" and "reset" Frame objects.
-   * This one is legacy code and the rearranging it does seems to be pointless.
+   * This one does minimal processing, and is designed for use with the
+   * descramber-board which does all the work. It needs to be elaborated to get
+   * the improvements in Plugin0.
    */
-  class PercivalProcessPlugin : public FrameProcessorPlugin
+  class PercivalProcess3Plugin : public FrameProcessorPlugin
   {
   public:
-    PercivalProcessPlugin();
-    virtual ~PercivalProcessPlugin();
+    PercivalProcess3Plugin();
+    virtual ~PercivalProcess3Plugin();
     void configure(OdinData::IpcMessage &config, OdinData::IpcMessage &reply);
     void configureProcess(OdinData::IpcMessage &config, OdinData::IpcMessage &reply);
     bool reset_statistics();
@@ -59,17 +55,15 @@ namespace FrameProcessor
     size_t concurrent_processes_;
     size_t concurrent_rank_;
 
-    // this is ~the frame-number of the first frame after a reset
-    // needs to be int64 to hold 32 bits of framenum and 1 bit for negative.
-    // it is int64 in FrameMetaData class
-    int64_t frame_base_;
+    /* Frame counter */
+    uint32_t frame_counter_;
   };
 
   /**
    * Registration of this plugin through the ClassLoader.  This macro
    * registers the class without needing to worry about name mangling
    */
-  REGISTER(FrameProcessorPlugin, PercivalProcessPlugin, "PercivalProcessPlugin");
+  REGISTER(FrameProcessorPlugin, PercivalProcess3Plugin, "PercivalProcess3Plugin");
 
 } /* namespace FrameProcessor */
 
