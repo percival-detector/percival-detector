@@ -1,9 +1,10 @@
 #define BOOST_TEST_MODULE "root_name"
-// #define BOOST_TEST_MAIN
+#define BOOST_TEST_NO_MAIN
 
 #include "CalibratorSample.h"
 #include "CalibratorReset.h"
 
+#include "log4cxx/basicconfigurator.h"
 #include <boost/test/unit_test.hpp>
 #include <boost/shared_ptr.hpp>
 
@@ -12,6 +13,14 @@
 #include <iostream>
 #include <chrono>
 
+
+int main(int argc, char* argv[], char* envp[])
+{
+  log4cxx::BasicConfigurator::configure();
+  return boost::unit_test::unit_test_main( &init_unit_test, argc, argv );
+}
+
+static log4cxx::LoggerPtr logger = log4cxx::Logger::getLogger("TestingL");
 
 //* The test files for this come from Alessandro Marras at Desy 16/1/20. They are available at:
 /* 
@@ -27,7 +36,7 @@ BOOST_AUTO_TEST_CASE(LoadFromH5uint16Frame1)
 {
     std::string pathToTestFiles = "/dls/detectors/Percival/test_data/LATcorrectionExample/";
     MemBlockI16 block;
-    block.init(rows, cols);
+    block.init(logger,rows, cols);
     block.loadFromH5(pathToTestFiles + "dataElaboration_example2_step1_2Img_DLSraw.h5", "/reset", 0);
 
     BOOST_CHECK_EQUAL(block.at(0,36), 3602);
@@ -41,7 +50,7 @@ BOOST_AUTO_TEST_CASE(LoadFromH5float)
 {
     std::string pathToTestFiles("/dls/detectors/Percival/test_data/CalibRTests/");
     MemBlockF block;
-    block.init(rows, cols);
+    block.init(logger,rows, cols);
     block.loadFromH5(pathToTestFiles + "BSI04_Tminus20_dmuxSELsw_2019.11.20_ADCcor.h5", "/sample/coarse/offset", 0);
 
     BOOST_CHECK_CLOSE(block.at(0,36), 51.089, smallPercent);
@@ -57,7 +66,7 @@ BOOST_AUTO_TEST_CASE(LoadFromH5uint16)
 {
     std::string pathToTestFiles("/dls/detectors/Percival/test_data/CalibRTests/");
     MemBlockI16 block;
-    block.init(rows, cols);
+    block.init(logger,rows, cols);
     block.loadFromH5(pathToTestFiles + "example_1_1Img_DLSraw.h5", "/sample", 0);
 
     BOOST_CHECK_EQUAL(block.at(1313,1313), 3057);
@@ -78,9 +87,9 @@ BOOST_AUTO_TEST_CASE(calibrationADC)
 
     MemBlockI16 input;
     MemBlockF output, correct;
-    input.init(rows,cols);
-    correct.init(rows,cols);
-    output.init(rows,cols);
+    input.init(logger,rows,cols);
+    correct.init(logger,rows,cols);
+    output.init(logger,rows,cols);
     input.loadFromH5(pathToTestFiles + "example_1_1Img_DLSraw.h5", "/sample", 0);
     correct.loadFromH5(pathToTestFiles + "example_1_1Img_ADU.h5", "/sample", 0);
 
@@ -115,10 +124,10 @@ BOOST_AUTO_TEST_CASE(sampleCMACDA)
 
     MemBlockI16 input;
     MemBlockF reset, output, correct;
-    input.init(rows,cols);
-    correct.init(rows,cols);
-    reset.init(rows,cols);
-    output.init(rows,cols);
+    input.init(logger, rows,cols);
+    correct.init(logger, rows,cols);
+    reset.init(logger, rows,cols);
+    output.init(logger, rows,cols);
     input.loadFromH5(pathToTestFiles + "example_1_1Img_DLSraw.h5", "/reset", 0);
     calibratorR.processFrame(input, reset);
 
@@ -165,10 +174,10 @@ BOOST_AUTO_TEST_CASE(sampleCDA_LAT)
 
     MemBlockI16 input;
     MemBlockF reset, output, correct;
-    input.init(rows,cols);
-    correct.init(rows,cols);
-    reset.init(rows,cols);
-    output.init(rows,cols);
+    input.init(logger,rows,cols);
+    correct.init(logger,rows,cols);
+    reset.init(logger,rows,cols);
+    output.init(logger,rows,cols);
     input.loadFromH5(pathToTestFiles + "dataElaboration_example2_step1_2Img_DLSraw.h5", "/reset", 0);
     calibratorR.processFrame(input, reset);
 
@@ -230,10 +239,10 @@ BOOST_AUTO_TEST_CASE(sampleCMA_CDA_LAT)
 
     MemBlockI16 input;
     MemBlockF reset, output, correct;
-    input.init(rows,cols);
-    correct.init(rows,cols);
-    reset.init(rows,cols);
-    output.init(rows,cols);
+    input.init(logger,rows,cols);
+    correct.init(logger,rows,cols);
+    reset.init(logger,rows,cols);
+    output.init(logger,rows,cols);
     input.loadFromH5(pathToTestFiles + "dataElaboration_example2_step1_2Img_DLSraw.h5", "/reset", 0);
     calibratorR.processFrame(input, reset);
 

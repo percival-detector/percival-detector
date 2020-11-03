@@ -26,6 +26,7 @@ BOOST_FIXTURE_TEST_SUITE(PercivalProcessPluginUnitTest, PercivalProcessPluginTes
 BOOST_AUTO_TEST_CASE(PercivalProcessPluginTestFixture)
 {
     std::cout << "PercivalProcessPluginTestFixture test case" << std::endl;
+    BOOST_CHECK(true);
 }
 
 BOOST_AUTO_TEST_SUITE_END();

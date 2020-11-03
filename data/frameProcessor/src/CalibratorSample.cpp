@@ -4,6 +4,7 @@
 
 #include <boost/bind.hpp>
 #include <iostream>
+#include <sstream>
 
 
 // it's probably a bad idea to put this here!
@@ -12,6 +13,7 @@ static tbb::task_scheduler_init init(max_threads);
 
 CalibratorSample::CalibratorSample(int rows, int cols)
 {
+    m_logger = log4cxx::Logger::getLogger("FP.SCalibrator");
     m_rows = rows;
     m_cols = cols;
 
@@ -67,7 +69,7 @@ float CalibratorSample::getCMAVal(MemBlockI16& gainBlock, MemBlockF& output, int
     float cmaVal = total / numCMACols;
     if(m_debugRow == row)
     {
-        std::cout << "CMA value for row " << row << ": " << cmaVal << std::endl;
+        LOG4CXX_INFO(m_logger, "CMA value for row " << row << ": " << cmaVal);
     }
     return cmaVal;
 }
@@ -111,26 +113,28 @@ void CalibratorSample::processFrameRow(MemBlockI16& input, MemBlockF& output, in
 
           if(m_debugRow == row)
           {
+                std::stringstream sstr;
                 size_t pixel_index = row * m_cols + m_debugCol;
-                std::cout << "at " << row << "," << m_debugCol << std::endl;
-                std::cout << "ADC value:" << valueADC << std::endl;
-                std::cout << "2-bit Gain value:" << gain << std::endl;
-                std::cout << "Reset pixel:" << m_resetFrame.at(pixel_index) << std::endl;
+                sstr << " at " << row << "," << m_debugCol;
+                sstr << " ADC value:" << valueADC;
+                sstr << " 2-bit Gain value:" << gain;
+                sstr << " Reset pixel:" << m_resetFrame.at(pixel_index);
                 if(gain==0)
                 {
-                    std::cout << "Ped Value:" << m_Ped0.at(pixel_index) << std::endl;
-                    std::cout << "Gain Value:" << m_Gain0.at(pixel_index) << std::endl;
+                    sstr << " Ped Value:" << m_Ped0.at(pixel_index);
+                    sstr << " Gain Value:" << m_Gain0.at(pixel_index);
                 }
                 else if(gain==1)
                 {
-                    std::cout << "Ped Value:" << m_Ped1.at(pixel_index) << std::endl;
-                    std::cout << "Gain Value:" << m_Gain1.at(pixel_index) << std::endl;
+                    sstr << " Ped Value:" << m_Ped1.at(pixel_index) << std::endl;
+                    sstr << " Gain Value:" << m_Gain1.at(pixel_index) << std::endl;
                 }
                 else if(gain==2)
                 {
-                    std::cout << "Ped Value:" << m_Ped2.at(pixel_index) << std::endl;
-                    std::cout << "Gain Value:" << m_Gain2.at(pixel_index) << std::endl;
+                    sstr << " Ped Value:" << m_Ped2.at(pixel_index) << std::endl;
+                    sstr << " Gain Value:" << m_Gain2.at(pixel_index) << std::endl;
                 }
+                LOG4CXX_INFO(m_logger, sstr.str());
           }
 
           switch (gain) {
@@ -258,20 +262,20 @@ void CalibratorSample::processFrameRowSIMD(MemBlockI16& input, MemBlockF& output
 
 void CalibratorSample::allocGainMem()
 {
-    m_Gc.init(m_rows, m_cols);
-    m_Oc.init(m_rows, m_cols);
-    m_Gf.init(m_rows, m_cols);
-    m_Of.init(m_rows, m_cols);
+    m_Gc.init(m_logger, m_rows, m_cols);
+    m_Oc.init(m_logger, m_rows, m_cols);
+    m_Gf.init(m_logger, m_rows, m_cols);
+    m_Of.init(m_logger, m_rows, m_cols);
 
-    m_Gain0.init(m_rows, m_cols);
-    m_Gain1.init(m_rows, m_cols);
-    m_Gain2.init(m_rows, m_cols);
+    m_Gain0.init(m_logger, m_rows, m_cols);
+    m_Gain1.init(m_logger, m_rows, m_cols);
+    m_Gain2.init(m_logger, m_rows, m_cols);
 
-    m_Ped0.init(m_rows, m_cols);
-    m_Ped1.init(m_rows, m_cols);
-    m_Ped2.init(m_rows, m_cols);
+    m_Ped0.init(m_logger, m_rows, m_cols);
+    m_Ped1.init(m_logger, m_rows, m_cols);
+    m_Ped2.init(m_logger, m_rows, m_cols);
 
-    m_resetFrame.init(m_rows, m_cols);
+    m_resetFrame.init(m_logger, m_rows, m_cols);
     // set the values to something nilpotent mainly for the benefit
     // of testing.
     m_resetFrame.setAll(0.0f);
@@ -336,7 +340,7 @@ int64_t CalibratorSample::loadLatGain(std::string filename)
 
 void CalibratorSample::setResetFrame(MemBlockF& reset)
 {
-    m_resetFrame.init(reset.rows(),reset.cols(),reset.data());
+    m_resetFrame.init(m_logger, reset.rows(),reset.cols(),reset.data());
 }
 
 

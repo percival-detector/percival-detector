@@ -14,13 +14,13 @@
 
 /** This class does all the work in our calibration algorithm. We need to use a class
 * instead of a function here because there are several arrays of calibration data that
-* are permanent, so we need to store them as member variables.
+* are permanent, so we need to store them as member variables. It also gives us a chance
+* to have a log4cxx which is standard.
 */
 
 class CalibratorSample : public Calibrator
 {
 public:
-    CalibratorSample() {};
     CalibratorSample(int rows, int cols);
     ~CalibratorSample();
     // these functions will destroy the data in input
