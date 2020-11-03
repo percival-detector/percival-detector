@@ -6,6 +6,8 @@
 
 #define BOUNDS_CHECK 1
 
+#include <log4cxx/logger.h>
+
 #include <string>
 #include <cassert>
 #include <iostream>
@@ -32,8 +34,9 @@ struct FrameMem
             free(m_data);
     }
 
-    void init(int rows, int cols, void* ptr=nullptr)
+    void init(log4cxx::LoggerPtr logger, int rows, int cols, void* ptr=nullptr)
     {
+        m_logger = logger;
         m_rows = rows; m_cols = cols;
         m_dataQty = m_rows * m_cols;
         if(m_data && m_ownMemory)
@@ -57,8 +60,8 @@ struct FrameMem
         }
     }
 
-    // for some T, this can load a 2d dataset, and then the frameNo is ignored.
-    int64_t loadFromH5(std::string filename, std::string dataset, int frameNo, std::string* outError=nullptr);
+    // this can load a 2 or 3d dataset. frameNo is only used with 3d datasets.
+    int64_t loadFromH5(std::string filename, std::string dataset, int frameNo);
 
     void setAll(T val)
     {
@@ -75,7 +78,7 @@ struct FrameMem
 
     void clone(FrameMem& source)
     {
-        init(source.rows(), source.cols());
+        init(m_logger, source.rows(), source.cols());
         memcpy(data(), source.data(), m_dataQty * sizeof(T));
     }
 
@@ -105,6 +108,8 @@ private:
     bool m_ownMemory;
     int m_rows, m_cols, m_dataQty;
     T* m_data;
+
+    log4cxx::LoggerPtr m_logger;
 };
 
 typedef FrameMem<float> MemBlockF;

@@ -12,6 +12,7 @@ static tbb::task_scheduler_init init(max_threads);
 
 CalibratorReset::CalibratorReset(int rows, int cols)
 {
+    m_logger = log4cxx::Logger::getLogger("FP.RCalibrator");
     m_rows = rows;
     m_cols = cols;
     allocGainMem();
@@ -117,10 +118,10 @@ inline void CalibratorReset::processFrameRowSIMD(MemBlockI16& input, MemBlockF& 
 
 void CalibratorReset::allocGainMem()
 {
-    m_Gc.init(m_rows, m_cols);
-    m_Oc.init(m_rows, m_cols);
-    m_Gf.init(m_rows, m_cols);
-    m_Of.init(m_rows, m_cols);
+    m_Gc.init(m_logger, m_rows, m_cols);
+    m_Oc.init(m_logger, m_rows, m_cols);
+    m_Gf.init(m_logger, m_rows, m_cols);
+    m_Of.init(m_logger, m_rows, m_cols);
 }
 
 

@@ -141,8 +141,8 @@ namespace FrameProcessor
 
         MemBlockI16 in;
         MemBlockF out;
-        in.init(FRAME_ROWS, FRAME_COLS, frame->get_image_ptr());
-        out.init(FRAME_ROWS, FRAME_COLS, newfr->get_image_ptr());
+        in.init(logger_, FRAME_ROWS, FRAME_COLS, frame->get_image_ptr());
+        out.init(logger_, FRAME_ROWS, FRAME_COLS, newfr->get_image_ptr());
 
         LOG4CXX_TRACE(logger_, "Processing calib frame");
         m_calibratorSample.processFrameP(in,out);

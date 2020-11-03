@@ -37,11 +37,13 @@ target_link_libraries(percivalFrameProcessorTest
 target_link_libraries(percivalCalibTest
         PercivalCalib
 		${Boost_LIBRARIES}
+		${LOG4CXX_LIBRARIES}
 )
 
 target_link_libraries(percivalCalibRegressionTest
         PercivalCalib
 		${Boost_LIBRARIES}
+		${LOG4CXX_LIBRARIES}
 )
 
 target_link_libraries(SimdTest

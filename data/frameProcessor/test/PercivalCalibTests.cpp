@@ -11,6 +11,8 @@
 #include <iostream>
 
 
+static log4cxx::LoggerPtr logger = log4cxx::Logger::getLogger("TestingL");
+
 // this bitpacker is only used in the unittests, so doesn't need to be fast.
 struct BitPacker
 {
@@ -83,6 +85,11 @@ BOOST_AUTO_TEST_CASE(CalibratorCreateAndDestroy)
     BOOST_CHECK((uint64_t)calibrator.m_Gc.data()%32 == 0);
 }
 
+BOOST_AUTO_TEST_CASE(LoggerWorksOk)
+{
+    LOG4CXX_ERROR(logger, "hi there");
+}
+
 // this one checks that IdOf is ok.
 BOOST_AUTO_TEST_CASE(CalibratorIdealOffset)
 {
@@ -104,8 +111,8 @@ BOOST_AUTO_TEST_CASE(CalibratorIdealOffset)
     MemBlockI16 input;
     MemBlockF output;
 
-    input.init(rows,cols);
-    output.init(rows,cols);
+    input.init(logger, rows,cols);
+    output.init(logger, rows,cols);
 
     input.at(0,0) = bp.getBits();
 
@@ -137,8 +144,8 @@ BOOST_AUTO_TEST_CASE(CalibratorCoarseAndFine)
     MemBlockI16 input;
     MemBlockF output;
 
-    input.init(rows,cols);
-    output.init(rows,cols);
+    input.init(logger, rows,cols);
+    output.init(logger, rows,cols);
 
     input.at(0,0) = bp.getBits();
 
@@ -180,8 +187,8 @@ BOOST_AUTO_TEST_CASE(CalibratorReset)
     MemBlockI16 input;
     MemBlockF output;
 
-    input.init(rows,cols);
-    output.init(rows,cols);
+    input.init(logger, rows,cols);
+    output.init(logger, rows,cols);
 
     input.at(0,0) = bp.getBits();
     bp.setGain(1);
@@ -219,8 +226,8 @@ BOOST_AUTO_TEST_CASE(CalibratorLatPedGain)
     MemBlockI16 input;
     MemBlockF output;
 
-    input.init(rows,cols);
-    output.init(rows,cols);
+    input.init(logger, rows,cols);
+    output.init(logger, rows,cols);
 
     input.at(0,0) = bp.getBits();
     bp.setGain(1);
@@ -246,7 +253,7 @@ BOOST_AUTO_TEST_CASE(CalibratorAlgNanOk)
     CalibratorSample calibrator(rows,cols);
 
     MemBlockI16 input;
-    input.init(rows,cols);
+    input.init(0, rows,cols);
 
     for(int c=0;c<cols;++c)
     {
@@ -274,7 +281,7 @@ BOOST_AUTO_TEST_CASE(CalibratorAlgNanOk)
     calibrator.m_Gc.at(0,1) = std::numeric_limits<float>::quiet_NaN();
 
     MemBlockF output1;
-    output1.init(rows,cols);
+    output1.init(logger, rows,cols);
     calibrator.processFrameRow(input, output1, 0);
 
     float lastOne = 0.0f;
@@ -301,8 +308,8 @@ BOOST_AUTO_TEST_CASE(CalibratorCMA_real)
 
     MemBlockF pic;
     MemBlockI16 gain;
-    pic.init(rows,cols);
-    gain.init(rows,cols);
+    pic.init(logger, rows,cols);
+    gain.init(logger, rows,cols);
     gain.setAll(0);
     gain.at(0, col1) = 1;
     
@@ -337,8 +344,8 @@ BOOST_AUTO_TEST_CASE(CalibratorCMA_nan)
 
     MemBlockF pic;
     MemBlockI16 gain;
-    pic.init(rows,cols);
-    gain.init(rows,cols);
+    pic.init(logger, rows,cols);
+    gain.init(logger, rows,cols);
     gain.setAll(0);
     gain.at(0, col2) = 2;
     gain.at(0, col1) = 1;
@@ -374,7 +381,7 @@ BOOST_AUTO_TEST_CASE(CalibratorAlgSIMDSameAsNormal)
     CalibratorSample calibrator(rows,cols);
 
     MemBlockI16 input, input2;
-    input.init(rows,cols);
+    input.init(logger, rows,cols);
 
     calibrator.m_resetFrame.setAll(k4);
 
@@ -400,8 +407,8 @@ BOOST_AUTO_TEST_CASE(CalibratorAlgSIMDSameAsNormal)
     input2.clone(input);
 
     MemBlockF output1, output2;
-    output1.init(rows,cols);
-    output2.init(rows,cols);
+    output1.init(logger, rows,cols);
+    output2.init(logger, rows,cols);
 
     calibrator.processFrameRowSIMD(input, output1, 0);
     calibrator.processFrameRow(input2, output2, 0);

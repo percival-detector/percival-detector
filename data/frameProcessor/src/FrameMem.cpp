@@ -17,10 +17,9 @@
 * @ret negative is failure.
 */
 template<>
-int64_t FrameMem<float>::loadFromH5(std::string filename, std::string dataset, int frameNo, std::string* outError)
+int64_t FrameMem<float>::loadFromH5(std::string filename, std::string dataset, int frameNo)
 {
     int64_t ret = -1;
-    std::stringstream errs;
     hid_t file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
     if(0<=file_id)
     {
@@ -53,9 +52,8 @@ int64_t FrameMem<float>::loadFromH5(std::string filename, std::string dataset, i
                }
                else
                {
-                   errs << "Error dimension mismatch loading from H5:\n";
-                   errs << " dataset is " << dims[0] << "x" << dims[1] << std::endl;
-                   errs << " memblock is " << m_rows << "x" << m_cols << std::endl;
+                   LOG4CXX_ERROR(m_logger, "Error dimension mismatch loading from H5:");
+                   LOG4CXX_ERROR(m_logger, " dataset is " << dims[0] << "x" << dims[1] << " memblock is " << m_rows << "x" << m_cols);
                }
            }
            else if(ndims == 3)
@@ -80,9 +78,8 @@ int64_t FrameMem<float>::loadFromH5(std::string filename, std::string dataset, i
                }
                else
                {
-                   errs << "Error dimension mismatch:" << std::endl;
-                   errs << " dataset is " << dims[0] << "x" << dims[1] << "x" << dims[2] << std::endl;
-                   errs << " memblock is " << m_rows << "x" << m_cols << std::endl;
+                   LOG4CXX_ERROR(m_logger, "Error dimension mismatch:");
+                   LOG4CXX_ERROR(m_logger, " dataset is " << dims[0] << "x" << dims[1] << "x" << dims[2] << " memblock is " << m_rows << "x" << m_cols);
                }
            }
 
@@ -92,29 +89,24 @@ int64_t FrameMem<float>::loadFromH5(std::string filename, std::string dataset, i
         }
         else
         {
-            errs << "could not open dataset " << dataset << " in " << filename << std::endl;
+            LOG4CXX_ERROR(m_logger, "could not open dataset " << dataset << " in " << filename);
         }
 
         H5Fclose(file_id);
     }
     else
     {
-        errs << "could not open file " << filename << std::endl;
+        LOG4CXX_ERROR(m_logger, "could not open file " << filename);
     }
-
-    if(outError)
-      *outError = errs.str();
-    std::cout << errs.str();
 
     return ret;
 }
 
 
 template<>
-int64_t FrameMem<uint16_t>::loadFromH5(std::string filename, std::string dataset, int frameNo, std::string* outError)
+int64_t FrameMem<uint16_t>::loadFromH5(std::string filename, std::string dataset, int frameNo)
 {
     int64_t rc = -1;
-    std::stringstream errs;
     hid_t file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
     if(0<=file_id)
     {
@@ -138,15 +130,14 @@ int64_t FrameMem<uint16_t>::loadFromH5(std::string filename, std::string dataset
                }
                else
                {
-                   errs << "Error dimension mismatch:" << std::endl;
-                   errs << " dataset is " << dims[0] << "x" << dims[1] << "x" << dims[2] << std::endl;
-                   errs << " memblock is " << m_rows << "x" << m_cols << std::endl;
+                   LOG4CXX_ERROR(m_logger, "Error dimension mismatch:");
+                   LOG4CXX_ERROR(m_logger, " dataset is " << dims[0] << "x" << dims[1] << "x" << dims[2] << " memblock is " << m_rows << "x" << m_cols);
                }
                H5Sclose(memspace_id);
            }
            else
            {
-               errs << "Error dimension mismatch; dataset must be 3d" << std::endl;
+               LOG4CXX_ERROR(m_logger, "Error dimension mismatch; dataset must be 3d");
            }
 
            H5Sclose(dspace_id);
@@ -154,19 +145,16 @@ int64_t FrameMem<uint16_t>::loadFromH5(std::string filename, std::string dataset
         }
         else
         {
-            errs << "could not open dataset " << dataset << std::endl;
+            LOG4CXX_ERROR(m_logger, "could not open dataset " << dataset);
         }
 
         H5Fclose(file_id);
     }
     else
     {
-        errs << "could not open file " << filename << std::endl;
+        LOG4CXX_ERROR(m_logger, "could not open file " << filename);
     }
 
-    if(outError)
-      *outError = errs.str();
-    std::cout << errs.str();
 
     return rc;
 }
