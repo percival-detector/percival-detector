@@ -11,6 +11,7 @@
 
 #include <random>
 #include <iostream>
+#include <chrono>
 
 
 int main(int argc, char* argv[], char* envp[])
@@ -434,4 +435,39 @@ BOOST_AUTO_TEST_CASE(CalibratorAlgSIMDSameAsNormal)
     }
 }
 
+#if 0
+// this one offers timing stats on processing a whole frame
+BOOST_AUTO_TEST_CASE(CalibratorFrameRun)
+{
+    int rows=1484, cols=1408;
+    CalibratorSample calibrator(rows,cols);
 
+    calibrator.m_Gc.setAll(k1);
+    calibrator.m_Oc.setAll(k2);
+    calibrator.m_Gf.setAll(k3);
+    calibrator.m_Of.setAll(k4);
+    calibrator.m_Gain0.setAll(1.0);
+
+    BitPacker bp;
+    bp.clear();
+    bp.setCoarse(4); // random value
+    bp.setFine(4);
+    bp.setGain(rand()%3); // I want to vary this to force different code branches
+
+    MemBlockI16 input;
+    MemBlockF output;
+
+    input.init(logger,rows,cols);
+    output.init(logger,rows,cols);
+
+    input.setAll(bp.getBits());
+
+    auto t1 = std::chrono::high_resolution_clock::now();
+    calibrator.processFrameP(input, output);
+    auto t2 = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
+    std::cout << "whole frame took " << duration << "us" << std::endl;
+
+}
+
+#endif

@@ -7,7 +7,7 @@
 
 
 // it's probably a bad idea to put this here!
-static const int max_threads = 16;
+static const int max_threads = 6;
 static tbb::task_scheduler_init init(max_threads);
 
 CalibratorReset::CalibratorReset(int rows, int cols)
