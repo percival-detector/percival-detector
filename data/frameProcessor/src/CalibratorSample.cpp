@@ -8,7 +8,7 @@
 
 
 // it's probably a bad idea to put this here!
-static const int max_threads = 16;
+static const int max_threads = 6;
 static tbb::task_scheduler_init init(max_threads);
 
 CalibratorSample::CalibratorSample(int rows, int cols)
@@ -36,7 +36,9 @@ void CalibratorSample::processFrame(MemBlockI16& input, MemBlockF& output)
 void CalibratorSample::processFrameP(MemBlockI16& input, MemBlockF& output)
 {
     auto fn = boost::bind(&CalibratorSample::processFrameRowsTBB, this, &input, &output, _1);
-    tbb::parallel_for( tbb::blocked_range<int>(0,m_rows,50), fn, tbb::simple_partitioner());
+    // blocked_range(begin, end, grain G)
+    // Using simple_partitioner guarantees that ⌈G/2⌉ ≤ chunksize ≤ G. 
+    tbb::parallel_for( tbb::blocked_range<int>(0,m_rows,150), fn, tbb::simple_partitioner());
 }
 
 void CalibratorSample::processFrameRowsTBB(MemBlockI16* pInput, MemBlockF* pOutput, tbb::blocked_range<int> rows)

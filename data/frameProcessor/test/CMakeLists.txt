@@ -9,7 +9,7 @@ include_directories(${FRAMEPROCESSOR_DIR}/include ${ODINDATA_INCLUDE_DIRS}
 # Build list of test source files from current dir
 file(GLOB TEST_SOURCES *.cpp)
 
-set (CMAKE_CXX_FLAGS "-mavx -w -std=c++11")
+set (CMAKE_CXX_FLAGS "-mavx -w -std=c++11 ${CMAKE_CXX_FLAGS}")
 
 
 # Add test and project source files to executable
