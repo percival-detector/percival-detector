@@ -215,15 +215,22 @@ void* PercivalEmulatorFrameDecoder::get_next_payload_buffer(void) const
 
 size_t PercivalEmulatorFrameDecoder::get_next_payload_size(void) const
 {
-   size_t next_receive_size = 0;
+    // we must always read the whole datablock to move onto the next packet
+    size_t next_receive_size = get_datablock_size();
 
     if (get_packet_number() < PercivalEmulator::num_primary_packets)
 	{
-		next_receive_size = PercivalEmulator::primary_packet_size;
+        if(next_receive_size != PercivalEmulator::primary_packet_size)
+        {
+            LOG4CXX_ERROR(logger_, "bad packet size:" << next_receive_size);
+        }
 	}
 	else
 	{
-		next_receive_size = PercivalEmulator::tail_packet_size;
+		if(next_receive_size != PercivalEmulator::tail_packet_size)
+        {
+            LOG4CXX_ERROR(logger_, "bad tail packet size:" << next_receive_size);
+        }
 	}
 
     return next_receive_size;
@@ -326,7 +333,8 @@ void PercivalEmulatorFrameDecoder::get_status(const std::string param_prefix, Od
 
 uint16_t PercivalEmulatorFrameDecoder::get_datablock_size(void) const
 {
-    return *(reinterpret_cast<uint16_t*>(raw_packet_header()+PercivalEmulator::datablock_size_offset));
+    uint16_t datablock_size = *(reinterpret_cast<uint16_t*>(raw_packet_header()+PercivalEmulator::datablock_size_offset));
+    return ntohs(datablock_size);  
 }
 
 uint8_t PercivalEmulatorFrameDecoder::get_packet_type(void) const

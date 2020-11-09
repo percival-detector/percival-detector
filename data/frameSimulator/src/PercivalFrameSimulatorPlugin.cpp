@@ -144,9 +144,10 @@ namespace FrameSimulator {
                         PercivalEmulator::PacketHeaderFields* pHeader = 
                             static_cast<PercivalEmulator::PacketHeaderFields*>(buf);
 
+                        pHeader->m_datablock_size = htons(PercivalEmulator::primary_packet_size);
                         pHeader->m_packet_type = pt;
                         pHeader->m_subframe_number = sf;
-                        pHeader->m_frame_number = htonl(fr);
+                        pHeader->m_frame_number = htonl(fr+1e7);
                         pHeader->m_packet_number = htons(pk);
                         memset(pHeader->m_frame_info, 0x98, PercivalEmulator::frame_info_size);
 

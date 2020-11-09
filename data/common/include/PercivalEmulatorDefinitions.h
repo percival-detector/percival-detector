@@ -9,6 +9,7 @@
 
 namespace PercivalEmulator {
 
+    // rename this because it's the datablock size
     static const size_t primary_packet_size    = 4928;
     static const size_t num_primary_packets    = 424;
     static const size_t tail_packet_size       = 0;

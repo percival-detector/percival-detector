@@ -135,6 +135,27 @@ namespace FrameProcessor
     this->push(info_frame);
   }
 
+//! The original frame-number that Percival gives to the frame is useful debug info,
+// so this is a chance to save it in the h5 file.
+  void PercivalProcessPlugin::addFrameNumField(const PercivalEmulator::FrameHeader* hdrPtr, FrameMetaData md)
+  {
+    dimensions_t fn_dims{1};
+    md.set_dataset_name("original_framenum");
+    md.set_dimensions(fn_dims);
+    md.set_data_type(FrameProcessor::raw_32bit);
+
+    boost::shared_ptr<Frame> fn_frame;
+    fn_frame.reset(new DataBlockFrame(md, 4));
+    char* dest_ptr;
+    const char *src_ptr;
+    dest_ptr = (char *)fn_frame->get_data_ptr();
+    src_ptr = (char const*)&hdrPtr->frame_number;
+    memcpy(dest_ptr, src_ptr, 4);
+
+    LOG4CXX_TRACE(logger_, "Pushing original_framenum frame.");
+    this->push(fn_frame);
+  }
+
   void PercivalProcessPlugin::process_frame(boost::shared_ptr<Frame> frame)
   {
     LOG4CXX_TRACE(logger_, "Processing raw frame.");
@@ -177,6 +198,7 @@ namespace FrameProcessor
     md.set_frame_offset(frame_base_);
 
     processInfoField(hdrPtr, md);
+    addFrameNumField(hdrPtr, md);
 
     md.set_dataset_name("reset");
     md.set_dimensions(p2m_dims);

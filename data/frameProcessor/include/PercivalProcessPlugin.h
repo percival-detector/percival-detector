@@ -54,6 +54,8 @@ namespace FrameProcessor
     static const std::string CONFIG_PROCESS_RANK;
 
     void processInfoField(const PercivalEmulator::FrameHeader* hdrPtr, FrameMetaData md);
+    void addFrameNumField(const PercivalEmulator::FrameHeader* hdrPtr, FrameMetaData md);
+
 
     /** Pointer to logger */
     LoggerPtr logger_;
