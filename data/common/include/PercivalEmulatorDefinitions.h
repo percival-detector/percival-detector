@@ -5,14 +5,9 @@
  *      Author: tcn45
  */
 
-#ifndef INCLUDE_PERCIVALEMULATORDEFINITIONS_H_
-#define INCLUDE_PERCIVALEMULATORDEFINITIONS_H_
-
-#define P2M_EMULATOR_NEW_FIRMWARE 1
+#pragma once
 
 namespace PercivalEmulator {
-
-#ifdef P2M_EMULATOR_NEW_FIRMWARE
 
     static const size_t primary_packet_size    = 4928;
     static const size_t num_primary_packets    = 424;
@@ -21,17 +16,8 @@ namespace PercivalEmulator {
     static const size_t num_subframes          = 2;
     static const size_t num_data_types         = 2;
 
-//    static const size_t packet_header_size     = 54; // NB As of 25/1/16 firmware incomplete so fields are not properly implemented
-//    static const size_t pixel_data_size_offset = 0;  // not yet present
-//    static const size_t packet_type_offset     = 0;  // should be 2
-//    static const size_t subframe_number_offset = 1;  // should be 3
-//    static const size_t frame_number_offset    = 2;  // should be 4
-//    static const size_t packet_number_offset   = 6;  // should be 8
-//    static const size_t packet_offset_offset   = 10; // not yet present
-//    static const size_t frame_info_offset      = 8;  // should be 12
-
     static const size_t packet_header_size     = 54;
-    static const size_t pixel_data_size_offset = 0;
+    static const size_t datablock_size_offset  = 0;
     static const size_t packet_type_offset     = 2;
     static const size_t subframe_number_offset = 3;
     static const size_t frame_number_offset    = 4;
@@ -41,28 +27,6 @@ namespace PercivalEmulator {
 
     static const size_t frame_info_size        = 42;
 
-    static const size_t reference_packet_size = 448;
-    static const uint8_t reference_packet_subframe_number = 0x80;
-
-#else
-
-    static const size_t primary_packet_size    = 8192;
-    static const size_t num_primary_packets    = 255;
-    static const size_t tail_packet_size       = 512;
-    static const size_t num_tail_packets       = 1;
-    static const size_t num_subframes          = 2;
-    static const size_t num_data_types         = 2;
-
-    static const size_t packet_header_size     = 22;
-    static const size_t packet_type_offset     = 0;
-    static const size_t subframe_number_offset = 1;
-    static const size_t frame_number_offset    = 2;
-    static const size_t packet_number_offset   = 6;
-    static const size_t frame_info_offset      = 8;
-
-    static const size_t frame_info_size        = 14;
-
-#endif
 
     typedef struct
     {
@@ -72,7 +36,8 @@ namespace PercivalEmulator {
     // this is what appears at the start of a UDP payload from the detector
     struct PacketHeaderFields
     {
-        uint16_t m_pixel_data_size;
+        // this is the size of what appears after the header.
+        uint16_t m_datablock_size;
         uint8_t m_packet_type;
         uint8_t m_subframe_number;
         uint32_t m_frame_number;
@@ -107,4 +72,3 @@ namespace PercivalEmulator {
 
 }
 
-#endif /* INCLUDE_PERCIVALEMULATORDEFINITIONS_H_ */

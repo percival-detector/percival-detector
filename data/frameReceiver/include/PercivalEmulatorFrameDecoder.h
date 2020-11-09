@@ -5,8 +5,7 @@
  *      Author: tcn45
  */
 
-#ifndef INCLUDE_PERCIVALEMULATORFRAMEDECODER_H_
-#define INCLUDE_PERCIVALEMULATORFRAMEDECODER_H_
+#pragma once
 
 #include "FrameDecoderUDP.h"
 #include "PercivalEmulatorDefinitions.h"
@@ -49,16 +48,12 @@ namespace FrameReceiver
 
         void* get_packet_header_buffer(void);
 
-#ifdef P2M_EMULATOR_NEW_FIRMWARE
-        uint16_t get_pixel_data_size(void) const;
-#endif
+        uint16_t get_datablock_size(void) const;
         uint8_t get_packet_type(void) const;
         uint8_t get_subframe_number(void) const;
         uint32_t get_frame_number(void) const;
         uint16_t get_packet_number(void) const;
-#ifdef P2M_EMULATOR_NEW_FIRMWARE
         uint16_t get_packet_offset(void) const;
-#endif
         uint8_t* get_frame_info(void) const;
 
     private:
@@ -68,14 +63,11 @@ namespace FrameReceiver
 
         boost::shared_ptr<void> current_packet_header_;
         boost::shared_ptr<void> dropped_frame_buffer_;
-        boost::shared_ptr<void> reference_packet_buffer_;
 
         int current_frame_seen_;
         int current_frame_buffer_id_;
         void* current_frame_buffer_;
         PercivalEmulator::FrameHeader* current_frame_header_;
-
-        unsigned int reference_packets_seen_;
 
         std::map<int,int> frames_we_drop_;
 
@@ -83,4 +75,3 @@ namespace FrameReceiver
 
 } // namespace FrameReceiver
 
-#endif /* INCLUDE_PERCIVALEMULATORFRAMEDECODER_H_ */

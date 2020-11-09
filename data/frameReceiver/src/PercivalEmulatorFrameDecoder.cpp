@@ -22,12 +22,10 @@ PercivalEmulatorFrameDecoder::PercivalEmulatorFrameDecoder() :
 		current_frame_seen_(-1),
 		current_frame_buffer_id_(-1),
 		current_frame_buffer_(0),
-		current_frame_header_(0),
-		reference_packets_seen_(0)
+		current_frame_header_(0)
 {
     current_packet_header_.reset(new uint8_t[sizeof(PercivalEmulator::PacketHeader)]);
     dropped_frame_buffer_.reset(new uint8_t[PercivalEmulator::total_frame_size]);
-    reference_packet_buffer_.reset(new uint8_t[PercivalEmulator::reference_packet_size]);
 }
 
 PercivalEmulatorFrameDecoder::~PercivalEmulatorFrameDecoder()
@@ -71,7 +69,7 @@ void PercivalEmulatorFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage&
         LOG4CXX_INFO(packet_logger_, "PktHdr: SourceAddress");
         LOG4CXX_INFO(packet_logger_, "PktHdr: |               SourcePort");
         LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     DestinationPort");
-        LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      PixelDataSize [2 Bytes]");
+        LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      DataSize [2 Bytes]");
         LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      |     PacketType [1 Byte]");
         LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      |     |  SubframeNumber [1 Byte]");
         LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      |     |  |  FrameNumber [4 Bytes]");
@@ -131,24 +129,10 @@ void PercivalEmulatorFrameDecoder::process_packet_header(size_t bytes_received, 
 	uint8_t  subframe = get_subframe_number();
 	uint8_t  type = get_packet_type();
 
-#ifndef P2M_EMULATOR_NEW_FIRMWARE
-	// Emulator firmware increments the frame number between sample and reset subframes, so as a
-	// workaround to allow matching to occur, increment frame number for sample packets
-	if (type == PacketTypeSample)
-	{
-	    frame += 1;
-	}
-#endif
-
     LOG4CXX_DEBUG_LEVEL(3, logger_, "Got packet header:"
             << " type: "     << (int)type << " subframe: " << (int)subframe
             << " packet: "   << packet_number    << " frame: "    << frame
     );
-
-    if (subframe == PercivalEmulator::reference_packet_subframe_number)
-    {
-        reference_packets_seen_++;
-    }
 
     if (frame != current_frame_seen_)
     {
@@ -158,16 +142,20 @@ void PercivalEmulatorFrameDecoder::process_packet_header(size_t bytes_received, 
     	if (frame_buffer_map_.count(current_frame_seen_) == 0 && frames_we_drop_.count(current_frame_seen_) == 0)
     	{
             // new frame appears, allocate a buffer for it.
-    	    if (empty_buffer_queue_.empty())
+            if (subframe > 1)
             {
-
-                LOG4CXX_ERROR(logger_, "First packet from frame " << current_frame_seen_ << " detected but no free buffers available. Dropping packet data for this frame");
+                // reference frames have subframe 128, but they are not used any more.
+                LOG4CXX_ERROR(logger_, "First packet from frame " << current_frame_seen_ << " has subframe num " << subframe << ". Dropping frame.");
+                frames_we_drop_[current_frame_seen_] = DUMMY_BUFFER;
+            }
+    	    else if (empty_buffer_queue_.empty())
+            {
+                LOG4CXX_ERROR(logger_, "First packet from frame " << current_frame_seen_ << " but no free buffers. Dropping frame.");
                 frames_we_drop_[current_frame_seen_] = DUMMY_BUFFER;
 
             }
     	    else
     	    {
-
                 current_frame_buffer_id_ = empty_buffer_queue_.front();
                 empty_buffer_queue_.pop();
                 frame_buffer_map_[current_frame_seen_] = current_frame_buffer_id_;
@@ -215,18 +203,13 @@ void* PercivalEmulatorFrameDecoder::get_next_payload_buffer(void) const
 
     uint8_t* next_receive_location;
 
-    if (get_subframe_number() == PercivalEmulator::reference_packet_subframe_number)
-    {
-        next_receive_location = reinterpret_cast<uint8_t*>(reference_packet_buffer_.get());
-    }
-    else {
-        next_receive_location =
-            reinterpret_cast<uint8_t*>(current_frame_buffer_) +
-            get_frame_header_size() +
-            (PercivalEmulator::data_type_size * get_packet_type()) +
-            (PercivalEmulator::subframe_size * get_subframe_number()) +
-            (PercivalEmulator::primary_packet_size * get_packet_number());
-    }
+    next_receive_location =
+        reinterpret_cast<uint8_t*>(current_frame_buffer_) +
+        get_frame_header_size() +
+        (PercivalEmulator::data_type_size * get_packet_type()) +
+        (PercivalEmulator::subframe_size * get_subframe_number()) +
+        (PercivalEmulator::primary_packet_size * get_packet_number());
+    
     return reinterpret_cast<void*>(next_receive_location);
 }
 
@@ -234,11 +217,7 @@ size_t PercivalEmulatorFrameDecoder::get_next_payload_size(void) const
 {
    size_t next_receive_size = 0;
 
-    if (get_subframe_number() == PercivalEmulator::reference_packet_subframe_number)
-    {
-        next_receive_size = PercivalEmulator::reference_packet_size;
-    }
-    else if (get_packet_number() < PercivalEmulator::num_primary_packets)
+    if (get_packet_number() < PercivalEmulator::num_primary_packets)
 	{
 		next_receive_size = PercivalEmulator::primary_packet_size;
 	}
@@ -257,10 +236,7 @@ FrameDecoder::FrameReceiveState PercivalEmulatorFrameDecoder::process_packet(siz
 
     if(current_frame_buffer_id_ != DUMMY_BUFFER)
     {
-        if (get_subframe_number() != PercivalEmulator::reference_packet_subframe_number)
-        {
-            current_frame_header_->packets_received++;
-        }
+        current_frame_header_->packets_received++;
 
 	    if (current_frame_header_->packets_received == PercivalEmulator::num_frame_packets)
 	    {
@@ -335,7 +311,6 @@ void PercivalEmulatorFrameDecoder::monitor_buffers(void)
     LOG4CXX_DEBUG_LEVEL(3, logger_, get_num_mapped_buffers() << " frame buffers in use, "
             << get_num_empty_buffers() << " empty buffers available, "
             << frames_timedout_ << " incomplete frames timed out");
-    LOG4CXX_DEBUG_LEVEL(3, logger_, reference_packets_seen_ << " reference packets dropped");
 
     // iterate over frames that go to dummy buffer and delete the old ones
     while(3<frames_we_drop_.size())
@@ -349,12 +324,10 @@ void PercivalEmulatorFrameDecoder::get_status(const std::string param_prefix, Od
 
 }
 
-#ifdef P2M_EMULATOR_NEW_FIRMWARE
-uint16_t PercivalEmulatorFrameDecoder::get_pixel_data_size(void) const
+uint16_t PercivalEmulatorFrameDecoder::get_datablock_size(void) const
 {
-    return *(reinterpret_cast<uint16_t*>(raw_packet_header()+PercivalEmulator::pixel_data_size_offset));
+    return *(reinterpret_cast<uint16_t*>(raw_packet_header()+PercivalEmulator::datablock_size_offset));
 }
-#endif
 
 uint8_t PercivalEmulatorFrameDecoder::get_packet_type(void) const
 {
@@ -378,18 +351,17 @@ uint16_t PercivalEmulatorFrameDecoder::get_packet_number(void) const
     return ntohs(packet_number_raw);
 }
 
-#ifdef P2M_EMULATOR_NEW_FIRMWARE
 uint16_t PercivalEmulatorFrameDecoder::get_packet_offset(void) const
 {
     return *(reinterpret_cast<uint16_t*>(raw_packet_header()+PercivalEmulator::packet_offset_offset));
 }
-#endif
 
 uint8_t* PercivalEmulatorFrameDecoder::get_frame_info(void) const
 {
     return (reinterpret_cast<uint8_t*>(raw_packet_header()+PercivalEmulator::frame_info_offset));
 }
 
+// remove this
 uint8_t* PercivalEmulatorFrameDecoder::raw_packet_header(void) const
 {
     return reinterpret_cast<uint8_t*>(current_packet_header_.get());

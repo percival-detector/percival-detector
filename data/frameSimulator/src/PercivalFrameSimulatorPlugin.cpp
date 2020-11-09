@@ -34,8 +34,6 @@ namespace FrameSimulator {
 
         m_numPacketsFromPcap = 0;
         m_numFramesToCreate = 0;
-
-
     }
 
     void PercivalFrameSimulatorPlugin::populate_options(po::options_description& config)
