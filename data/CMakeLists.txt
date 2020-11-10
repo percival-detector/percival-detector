@@ -58,7 +58,7 @@ message("-- Git describe version: ${GIT_DESC_STR}")
 message("-- major:${VERSION_MAJOR} minor:${VERSION_MINOR} patch:${VERSION_PATCH} sha1:${VERSION_SHA1}")
 message("-- short version: ${VERSION_SHORT}")
 
-configure_file(${COMMON_DIR}/include/version.h.in "${CMAKE_BINARY_DIR}/include/version.h")
+configure_file(${COMMON_DIR}/include/version.h.in "${CMAKE_BINARY_DIR}/include/percival_version.h")
 include_directories(${CMAKE_BINARY_DIR}/include)
 
 # Add common/include directory to include path

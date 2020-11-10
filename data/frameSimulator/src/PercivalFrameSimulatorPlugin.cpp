@@ -1,11 +1,12 @@
 
 
-#include "version.h"
 #include "PercivalFrameSimulatorPlugin.h"
 #include "PercivalEmulatorDefinitions.h"
 #include "FrameSimulatorOption.h"
 
 #include "DebugLevelLogger.h"
+
+#include "percival_version.h"
 
 #include <boost/lexical_cast.hpp>
 
@@ -178,7 +179,7 @@ namespace FrameSimulator {
     * \return major version number as an integer
     */
     int PercivalFrameSimulatorPlugin::get_version_major() {
-        return ODIN_DATA_VERSION_MAJOR;
+        return PERCIVAL_VERSION_MAJOR;
     }
 
     /**
@@ -187,7 +188,7 @@ namespace FrameSimulator {
      * \return minor version number as an integer
      */
     int PercivalFrameSimulatorPlugin::get_version_minor() {
-        return ODIN_DATA_VERSION_MINOR;
+        return PERCIVAL_VERSION_MINOR;
     }
 
     /**
@@ -196,7 +197,7 @@ namespace FrameSimulator {
      * \return patch version number as an integer
      */
     int PercivalFrameSimulatorPlugin::get_version_patch() {
-        return ODIN_DATA_VERSION_PATCH;
+        return PERCIVAL_VERSION_PATCH;
     }
 
     /**
@@ -205,7 +206,7 @@ namespace FrameSimulator {
      * \return short version as a string
      */
     std::string PercivalFrameSimulatorPlugin::get_version_short() {
-        return ODIN_DATA_VERSION_STR_SHORT;
+        return PERCIVAL_VERSION_STR_SHORT;
     }
 
     /**
@@ -214,7 +215,7 @@ namespace FrameSimulator {
      * \return long version as a string
      */
     std::string PercivalFrameSimulatorPlugin::get_version_long() {
-        return ODIN_DATA_VERSION_STR;
+        return PERCIVAL_VERSION_STR;
     }
 
 }

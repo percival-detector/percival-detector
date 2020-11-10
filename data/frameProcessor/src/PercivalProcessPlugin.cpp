@@ -7,7 +7,7 @@
 
 #include <PercivalProcessPlugin.h>
 #include <DataBlockFrame.h>
-#include "version.h"
+#include "percival_version.h"
 
 #include <limits>
 
@@ -89,27 +89,27 @@ namespace FrameProcessor
 
   int PercivalProcessPlugin::get_version_major()
   {
-    return ODIN_DATA_VERSION_MAJOR;
+    return PERCIVAL_VERSION_MAJOR;
   }
 
   int PercivalProcessPlugin::get_version_minor()
   {
-    return ODIN_DATA_VERSION_MINOR;
+    return PERCIVAL_VERSION_MINOR;
   }
 
   int PercivalProcessPlugin::get_version_patch()
   {
-    return ODIN_DATA_VERSION_PATCH;
+    return PERCIVAL_VERSION_PATCH;
   }
 
   std::string PercivalProcessPlugin::get_version_short()
   {
-    return ODIN_DATA_VERSION_STR_SHORT;
+    return PERCIVAL_VERSION_STR_SHORT;
   }
 
   std::string PercivalProcessPlugin::get_version_long()
   {
-    return ODIN_DATA_VERSION_STR;
+    return PERCIVAL_VERSION_STR;
   }
 
   //! This gets the info field from the buffer header and creates

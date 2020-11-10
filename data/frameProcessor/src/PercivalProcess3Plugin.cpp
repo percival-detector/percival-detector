@@ -2,7 +2,7 @@
 
 #include <PercivalProcess3Plugin.h>
 #include <DataBlockFrame.h>
-#include "version.h"
+#include "percival_version.h"
 
 namespace FrameProcessor
 {
@@ -78,27 +78,27 @@ namespace FrameProcessor
 
   int PercivalProcess3Plugin::get_version_major()
   {
-    return ODIN_DATA_VERSION_MAJOR;
+    return PERCIVAL_VERSION_MAJOR;
   }
 
   int PercivalProcess3Plugin::get_version_minor()
   {
-    return ODIN_DATA_VERSION_MINOR;
+    return PERCIVAL_VERSION_MINOR;
   }
 
   int PercivalProcess3Plugin::get_version_patch()
   {
-    return ODIN_DATA_VERSION_PATCH;
+    return PERCIVAL_VERSION_PATCH;
   }
 
   std::string PercivalProcess3Plugin::get_version_short()
   {
-    return ODIN_DATA_VERSION_STR_SHORT;
+    return PERCIVAL_VERSION_STR_SHORT;
   }
 
   std::string PercivalProcess3Plugin::get_version_long()
   {
-    return ODIN_DATA_VERSION_STR;
+    return PERCIVAL_VERSION_STR;
   }
 
   void PercivalProcess3Plugin::process_frame(boost::shared_ptr<Frame> frame)
