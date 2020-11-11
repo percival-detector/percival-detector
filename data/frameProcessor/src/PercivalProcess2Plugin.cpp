@@ -160,8 +160,7 @@ namespace FrameProcessor
         dest_ptr += step_pos * bpp;
         src_ptr += step_pos * bpp;
     }
-    LOG4CXX_TRACE(logger_, "Pushing data frame.");
-    this->push(data_frame);
+
 
     md.set_dataset_name("reset");
     boost::shared_ptr<Frame> reset_frame;
@@ -182,6 +181,9 @@ namespace FrameProcessor
 
     LOG4CXX_TRACE(logger_, "Pushing reset frame.");
     this->push(reset_frame);
+
+    LOG4CXX_TRACE(logger_, "Pushing data frame.");
+    this->push(data_frame);
 
     // Increment local frame counter
     frame_counter_ += this->concurrent_processes_;
