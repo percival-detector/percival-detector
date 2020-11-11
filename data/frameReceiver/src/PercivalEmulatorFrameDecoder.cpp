@@ -294,10 +294,10 @@ void PercivalEmulatorFrameDecoder::monitor_buffers(void)
                     << " timed out with " << frame_header->packets_received << " packets received");
 
             frame_header->frame_state = FrameReceiveStateTimedout;
-            // zero the data in this frame to make it clear it's invalid
+            // fill this frame to make it clear it's invalid
             if (get_frame_buffer_size() > get_frame_header_size())
             {
-                std::memset((char*)buffer_addr + get_frame_header_size(), 0, get_frame_buffer_size() - get_frame_header_size());
+                std::memset((char*)buffer_addr + get_frame_header_size(), 0xff, get_frame_buffer_size() - get_frame_header_size());
             }
             ready_callback_(buffer_id, frame_num);
             frames_timedout++;
