@@ -209,6 +209,15 @@ void* PercivalEmulatorFrameDecoder::get_next_payload_buffer(void) const
         (PercivalEmulator::data_type_size * get_packet_type()) +
         (PercivalEmulator::subframe_size * get_subframe_number()) +
         (PercivalEmulator::primary_packet_size * get_packet_number());
+
+#if DOIT2
+        next_receive_location =
+            reinterpret_cast<uint8_t*>(current_frame_buffer_) +
+            get_frame_header_size() +
+            (PercivalEmulator::data_type_size * get_packet_type()) +
+            PercivalEmulator::primary_packet_size * 
+            (2*get_packet_number() + get_subframe_number());
+#endif
     
     return reinterpret_cast<void*>(next_receive_location);
 }
