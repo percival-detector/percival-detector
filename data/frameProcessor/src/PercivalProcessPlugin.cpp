@@ -135,8 +135,10 @@ namespace FrameProcessor
     this->push(info_frame);
   }
 
-//! The original frame-number that Percival gives to the frame is useful debug info,
-// so this is a chance to save it in the h5 file.
+  //! This gets the original-framenum from the buffer header and creates
+  // a data frame for it. Private function, not called by framework.
+  // you should set the frame number in the md before calling the function
+  // @param md a copy of the metadata
   void PercivalProcessPlugin::addFrameNumField(const PercivalEmulator::FrameHeader* hdrPtr, FrameMetaData md)
   {
     dimensions_t fn_dims{1};

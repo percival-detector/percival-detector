@@ -101,6 +101,29 @@ namespace FrameProcessor
     return ODIN_DATA_VERSION_STR;
   }
 
+  //! This gets the info field from the buffer header and creates
+  // a data frame for it. Private function, not called by framework.
+  // you should set the frame number in the md before calling the function
+  // @param md a copy of the metadata
+  void PercivalProcess2Plugin::processInfoField(const PercivalEmulator::FrameHeader* hdrPtr, FrameMetaData md)
+  {  
+    dimensions_t info_dims{1, PercivalEmulator::frame_info_size};
+    md.set_dataset_name("info");
+    md.set_dimensions(info_dims);
+    md.set_data_type(FrameProcessor::raw_8bit);
+
+    boost::shared_ptr<Frame> info_frame;
+    info_frame.reset(new DataBlockFrame(md, PercivalEmulator::frame_info_size));
+    char* dest_ptr;
+    const char *src_ptr;
+    dest_ptr = (char *)info_frame->get_data_ptr();
+    src_ptr = (char const*)hdrPtr->frame_info;
+    memcpy(dest_ptr, src_ptr, PercivalEmulator::frame_info_size);
+
+    LOG4CXX_TRACE(logger_, "Pushing info frame.");
+    this->push(info_frame);
+  }
+
   void PercivalProcess2Plugin::process_frame(boost::shared_ptr<Frame> frame)
   {
     LOG4CXX_TRACE(logger_, "Processing raw frame.");
@@ -113,6 +136,8 @@ namespace FrameProcessor
 
     FrameMetaData md = frame->meta_data();
     md.set_frame_number(frame_counter_);
+    processInfoField(hdrPtr, md);
+    
     md.set_dimensions(p2m_dims);
     md.set_data_type(FrameProcessor::raw_16bit);
     md.set_dataset_name("data");
