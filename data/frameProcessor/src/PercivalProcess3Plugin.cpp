@@ -106,7 +106,7 @@ namespace FrameProcessor
     LOG4CXX_TRACE(logger_, "Processing raw frame.");
 
     // Read out the frame header from the raw frame
-    const PercivalEmulator::FrameHeader* hdrPtr = static_cast<const PercivalEmulator::FrameHeader*>(frame->get_data_ptr());
+    const PercivalTransport::FrameHeader* hdrPtr = static_cast<const PercivalTransport::FrameHeader*>(frame->get_data_ptr());
     LOG4CXX_TRACE(logger_, "Raw frame number: " << hdrPtr->frame_number << " offset frame number: " << frame_counter_);
 
     dimensions_t p2m_dims(2); p2m_dims[0] = 1484; p2m_dims[1] = 1408;
@@ -117,24 +117,24 @@ namespace FrameProcessor
     md.set_data_type(FrameProcessor::raw_16bit);
     md.set_dataset_name("data");
     boost::shared_ptr<Frame> data_frame;
-    data_frame.reset(new DataBlockFrame(md, PercivalEmulator::data_type_size));
+    data_frame.reset(new DataBlockFrame(md, PercivalTransport::data_type_size));
 
     char *dest_ptr = (char *)data_frame->get_data_ptr();
-    const char *src_ptr = (static_cast<const char*>(frame->get_data_ptr())+sizeof(PercivalEmulator::FrameHeader)+PercivalEmulator::data_type_size);
+    const char *src_ptr = (static_cast<const char*>(frame->get_data_ptr())+sizeof(PercivalTransport::FrameHeader)+PercivalTransport::data_type_size);
 
-    memcpy(dest_ptr, src_ptr, PercivalEmulator::data_type_size);
+    memcpy(dest_ptr, src_ptr, PercivalTransport::data_type_size);
 
 
 
     md.set_dataset_name("reset");
     boost::shared_ptr<Frame> reset_frame;
-    reset_frame.reset(new DataBlockFrame(md, PercivalEmulator::data_type_size));
+    reset_frame.reset(new DataBlockFrame(md, PercivalTransport::data_type_size));
 
     dest_ptr = (char *)reset_frame->get_data_ptr();
     // can we use get_image_ptr() here?
-    src_ptr = (static_cast<const char*>(frame->get_data_ptr())+sizeof(PercivalEmulator::FrameHeader));
+    src_ptr = (static_cast<const char*>(frame->get_data_ptr())+sizeof(PercivalTransport::FrameHeader));
 
-    memcpy(dest_ptr, src_ptr, PercivalEmulator::data_type_size);
+    memcpy(dest_ptr, src_ptr, PercivalTransport::data_type_size);
 
     LOG4CXX_TRACE(logger_, "Pushing reset frame.");
     this->push(reset_frame);

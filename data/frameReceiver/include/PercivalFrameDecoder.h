@@ -1,5 +1,5 @@
 /*
- * PercivalEmulatorFrameDecoder.h
+ * PercivalFrameDecoder.h
  *
  *  Created on: Feb 24, 2015
  *      Author: tcn45
@@ -8,7 +8,7 @@
 #pragma once
 
 #include "FrameDecoderUDP.h"
-#include "PercivalEmulatorDefinitions.h"
+#include "PercivalTransport.h"
 #include <iostream>
 #include <stdint.h>
 #include <time.h>
@@ -16,12 +16,12 @@
 
 namespace FrameReceiver
 {
-    class PercivalEmulatorFrameDecoder : public FrameDecoderUDP
+    class PercivalFrameDecoder : public FrameDecoderUDP
     {
     public:
 
-        PercivalEmulatorFrameDecoder();
-        ~PercivalEmulatorFrameDecoder();
+        PercivalFrameDecoder();
+        ~PercivalFrameDecoder();
 
         int get_version_major();
         int get_version_minor();
@@ -67,7 +67,7 @@ namespace FrameReceiver
         int current_frame_seen_;
         int current_frame_buffer_id_;
         void* current_frame_buffer_;
-        PercivalEmulator::FrameHeader* current_frame_header_;
+        PercivalTransport::FrameHeader* current_frame_header_;
 
         std::map<int,int> frames_we_drop_;
 

@@ -1,5 +1,5 @@
 /*
- * PercivalEmulatorDefinitions.h
+ * PercivalTransport.h
  *
  *  Created on: Feb 2, 2016
  *      Author: tcn45
@@ -7,7 +7,7 @@
 
 #pragma once
 
-namespace PercivalEmulator {
+namespace PercivalTransport {
 
     // rename this because it's the datablock size
     static const size_t primary_packet_size    = 4928;

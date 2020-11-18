@@ -16,7 +16,7 @@ using namespace log4cxx;
 using namespace log4cxx::helpers;
 
 #include "FrameProcessorPlugin.h"
-#include "PercivalEmulatorDefinitions.h"
+#include "PercivalTransport.h"
 #include "ClassLoader.h"
 
 namespace FrameProcessor
@@ -53,8 +53,8 @@ namespace FrameProcessor
     /** Configuration constant for this process rank */
     static const std::string CONFIG_PROCESS_RANK;
 
-    void processInfoField(const PercivalEmulator::FrameHeader* hdrPtr, FrameMetaData md);
-    void addFrameNumField(const PercivalEmulator::FrameHeader* hdrPtr, FrameMetaData md);
+    void processInfoField(const PercivalTransport::FrameHeader* hdrPtr, FrameMetaData md);
+    void addFrameNumField(const PercivalTransport::FrameHeader* hdrPtr, FrameMetaData md);
 
 
     /** Pointer to logger */

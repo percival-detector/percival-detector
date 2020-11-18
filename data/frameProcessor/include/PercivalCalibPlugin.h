@@ -12,7 +12,7 @@ using namespace log4cxx::helpers;
 #include "CalibratorReset.h"
 #include "CalibratorSample.h"
 #include "FrameProcessorPlugin.h"
-#include "PercivalEmulatorDefinitions.h"
+#include "PercivalTransport.h"
 #include "ClassLoader.h"
 
 #include <thread>
