@@ -141,7 +141,7 @@ void CalibratorSample::processFrameRow(MemBlockI16& input, MemBlockF& output, in
 
           switch (gain) {
             case 0b00:
-            // this is the CDS stage
+              // subtracting the reset is the CDS stage
               valueADC -= m_resetFrame.at(pixel_index);
               valueADC -= m_Ped0.at(pixel_index);
               valueADC *= m_Gain0.at(pixel_index);

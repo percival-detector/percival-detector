@@ -21,25 +21,31 @@
 #include <thread>
 #include <chrono>
 
+#include <unistd.h>
+
 using namespace std::chrono;
 
 namespace FrameProcessor
 {
-    const std::string PercivalCalibPlugin::CONFIG_PROCESS             = "process";
-    const std::string PercivalCalibPlugin::CONFIG_PROCESS_NUMBER      = "number";
-    const std::string PercivalCalibPlugin::CONFIG_PROCESS_RANK        = "rank";
+    // this says where to get the calibration constants from. There should be one file,
+    // and all the constants are 64b-doubles.
+    const std::string CONFIG_CONSTANTSFILE             = "constantsfile";
+    // This value c, if set, says that cma avg will be taken from cols [c,c+31]
+    // in the frame of dims 1484r x 1408
+    // if it is missing initially, or set to -1 then cma averaging will not happen.
+    const std::string CONFIG_CMACOL                    = "cmacol";
 
     PercivalCalibPlugin::PercivalCalibPlugin() :
     frame_counter_(0),
     concurrent_processes_(1),
     concurrent_rank_(0),
+    m_loadedConstants(false),
     m_calibratorReset(FRAME_ROWS, FRAME_COLS),
     m_calibratorSample(FRAME_ROWS, FRAME_COLS)
   {
     logger_ = Logger::getLogger("FP.PercivalCalibPlugin");
 
     LOG4CXX_INFO(logger_, "PercivalCalibPlugin version " << this->get_version_long() << " loaded");
-
   }
 
   PercivalCalibPlugin::~PercivalCalibPlugin()
@@ -59,36 +65,54 @@ namespace FrameProcessor
   void PercivalCalibPlugin::configure(OdinData::IpcMessage& config, OdinData::IpcMessage& reply)
   {
     // Protect this method
-    LOG4CXX_INFO(logger_, config.encode());
+    LOG4CXX_DEBUG(logger_, config.encode());
+    int64_t rc;
 
-    // Check to see if we are configuring the process number and rank
-    if (config.has_param(PercivalCalibPlugin::CONFIG_PROCESS)) {
-      OdinData::IpcMessage processConfig(config.get_param<const rapidjson::Value&>(PercivalCalibPlugin::CONFIG_PROCESS));
-      this->configureProcess(processConfig, reply);
+    if (config.has_param(CONFIG_CMACOL))
+    {
+        int cmacol(config.get_param<int>(CONFIG_CMACOL));
+        if(0<=cmacol && cmacol < FRAME_COLS)
+        {
+            LOG4CXX_INFO(logger_, "cma on; col:" << cmacol);
+            m_calibratorSample.setCMA(true, cmacol);
+        }
+        else
+        {
+            LOG4CXX_INFO(logger_, "cma off");
+            m_calibratorSample.setCMA(false,0);
+        }
     }
-  }
 
-  /**
-   * Set configuration options for the Percival process count.
-   *
-   * This sets up the process plugin according to the configuration IpcMessage
-   * objects that are received. The options are searched for:
-   * CONFIG_PROCESS_NUMBER - Sets the number of writer processes executing
-   * CONFIG_PROCESS_RANK - Sets the rank of this process
-   *
-   * \param[in] config - IpcMessage containing configuration data.
-   * \param[out] reply - Response IpcMessage.
-   */
-  void PercivalCalibPlugin::configureProcess(OdinData::IpcMessage& config, OdinData::IpcMessage& reply)
-  {
-    // Check for process number and rank number
-    if (config.has_param(PercivalCalibPlugin::CONFIG_PROCESS_NUMBER)) {
-      this->concurrent_processes_ = config.get_param<size_t>(PercivalCalibPlugin::CONFIG_PROCESS_NUMBER);
-      LOG4CXX_INFO(logger_, "Concurrent processes changed to " << this->concurrent_processes_);
-    }
-    if (config.has_param(PercivalCalibPlugin::CONFIG_PROCESS_RANK)) {
-      this->concurrent_rank_ = config.get_param<size_t>(PercivalCalibPlugin::CONFIG_PROCESS_RANK);
-      LOG4CXX_INFO(logger_, "Process rank changed to " << this->concurrent_rank_);
+    if (config.has_param(CONFIG_CONSTANTSFILE))
+    {
+      std::string filename(config.get_param<std::string>(CONFIG_CONSTANTSFILE));
+      LOG4CXX_INFO(logger_, "calib file:" << filename);
+      m_loadedConstants = false;
+      if(access(filename.c_str(), R_OK)==0)
+      {
+        rc = m_calibratorSample.loadLatGain(filename);
+        if(rc)
+        {
+            LOG4CXX_ERROR(logger_, "Can not retrieve Lat Gain constants from " << filename);
+        }
+        else
+        {
+            rc = m_calibratorSample.loadADCGain(filename);
+            rc |= m_calibratorReset.loadADCGain(filename);
+            if(rc)
+            {
+                LOG4CXX_ERROR(logger_, "Can not retrieve ADC Gain constants from " << filename);
+            }
+            else
+            {
+                m_loadedConstants = true;
+            }
+        }
+      }
+      else
+      {
+        LOG4CXX_ERROR(logger_, "Can not find / open " << filename);
+      }
     }
   }
 
@@ -126,33 +150,52 @@ namespace FrameProcessor
 
   void PercivalCalibPlugin::process_frame(boost::shared_ptr<Frame> frame)
   {
-    std::chrono::high_resolution_clock::time_point start = high_resolution_clock::now();
-
+    if(m_loadedConstants == false)
+    {
+        LOG4CXX_ERROR(logger_, "calibration constants need to be loaded");
+    }
     std::string name = frame->get_meta_data().get_dataset_name();
-    LOG4CXX_TRACE(logger_, "Got calib frame " << name);
+    LOG4CXX_TRACE(logger_, "got frame " << name);
     if(name == "data")
     {
         boost::shared_ptr<Frame> newfr;
         dimensions_t dims{FRAME_ROWS, FRAME_COLS};
+        // temp turn this on until reset frame numbers are fixed on the descrambler.
+        if(true || frame->get_meta_data().get_frame_number() == m_resetFrameNumber)
+        {
+            int sz = dims[0] * dims[1] * sizeof(float);
+            newfr.reset(new DataBlockFrame(frame->get_meta_data(), sz));
+            newfr->meta_data().set_dataset_name("ecount");
+            newfr->meta_data().set_data_type(FrameProcessor::raw_float);
 
-        int sz = dims[0] * dims[1] * sizeof(float);
-        newfr.reset(new DataBlockFrame(frame->get_meta_data(), sz));
-        newfr->meta_data().set_dataset_name("data");
+            MemBlockI16 in;
+            MemBlockF out;
+            in.init(logger_, FRAME_ROWS, FRAME_COLS, frame->get_image_ptr());
+            out.init(logger_, FRAME_ROWS, FRAME_COLS, newfr->get_image_ptr());
 
-        MemBlockI16 in;
-        MemBlockF out;
-        in.init(logger_, FRAME_ROWS, FRAME_COLS, frame->get_image_ptr());
-        out.init(logger_, FRAME_ROWS, FRAME_COLS, newfr->get_image_ptr());
+            LOG4CXX_TRACE(logger_, "Processing calib frame");
+            m_calibratorSample.processFrameP(in,out);
 
-        LOG4CXX_TRACE(logger_, "Processing calib frame");
-        m_calibratorSample.processFrameP(in,out);
-
-        this->push(newfr);
+            this->push(newfr);
+        }
+        else
+        {
+            LOG4CXX_ERROR(logger_, "reset frame does not match sample frame");
+        }
     }
+    else if(name=="reset")
+    {
+        MemBlockI16 in;
+        in.init(logger_, FRAME_ROWS, FRAME_COLS, frame->get_image_ptr());
 
-    auto end = high_resolution_clock::now();
-
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    LOG4CXX_TRACE(logger_, "Processing took us:" << duration.count());
+        m_calibratorReset.processFrameP(in, m_calibratorSample.m_resetFrame);
+        m_resetFrameNumber = frame->meta_data().get_frame_number();
+    }
+    else
+    {
+        // other frames pass onto next stage
+        this->push(frame);
+    }
   }
 } /* namespace FrameProcessor */
+

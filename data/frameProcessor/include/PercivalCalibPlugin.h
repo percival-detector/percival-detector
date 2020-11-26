@@ -29,7 +29,6 @@ namespace FrameProcessor
     PercivalCalibPlugin();
     virtual ~PercivalCalibPlugin();
     void configure(OdinData::IpcMessage &config, OdinData::IpcMessage &reply);
-    void configureProcess(OdinData::IpcMessage &config, OdinData::IpcMessage &reply);
     bool reset_statistics();
     int get_version_major();
     int get_version_minor();
@@ -38,13 +37,6 @@ namespace FrameProcessor
     std::string get_version_long();
 
   private:
-    /** Configuration constant for process related items */
-    static const std::string CONFIG_PROCESS;
-    /** Configuration constant for number of processes */
-    static const std::string CONFIG_PROCESS_NUMBER;
-    /** Configuration constant for this process rank */
-    static const std::string CONFIG_PROCESS_RANK;
-
     void process_frame(boost::shared_ptr<Frame> frame);
 
     /** Pointer to logger */
@@ -57,6 +49,9 @@ namespace FrameProcessor
 
     /* Frame counter */
     uint32_t frame_counter_;
+    // the frame-number of the last reset frame
+    uint32_t m_resetFrameNumber;
+    bool m_loadedConstants;
   };
 
   /**
