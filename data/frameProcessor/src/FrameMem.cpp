@@ -13,18 +13,19 @@
 * are some differences between the types which is unfortunately why we need two
 * functions (=template specializations). They don't need to be fast (h5 isnt)
 * Memory needs to be allocated BEFORE calling them (do I want to change this?)
+* You need to have m_rows,m_cols equal to the dataset dims.
 *
 * @ret negative is failure.
 */
 template<>
-int64_t FrameMem<float>::loadFromH5(std::string filename, std::string dataset, int frameNo)
+int64_t FrameMem<double>::loadFromH5(std::string filename, std::string dataset, int frameNo)
 {
     int64_t ret = -1;
     hid_t file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
     if(0<=file_id)
     {
         hid_t ds_id = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
-        if(0<ds_id)
+        if(0<=ds_id)
         {
            hid_t dspace_id = H5Dget_space(ds_id);
            H5Sselect_all(dspace_id);
@@ -37,18 +38,9 @@ int64_t FrameMem<float>::loadFromH5(std::string filename, std::string dataset, i
                H5Sget_simple_extent_dims(dspace_id, dims, NULL);
                if(dims[0] == m_rows && dims[1]==m_cols)
                {
-                   double* ptr = static_cast<double*>(malloc(m_rows * m_cols * sizeof(double)));
-                   H5Dread(ds_id, H5T_IEEE_F64LE, memspace_id, dspace_id, H5P_DEFAULT, ptr);
-                   for(int r=0;r<m_rows;++r)
-                   {
-                       for(int c=0;c<m_cols;++c)
-                       {
-                           // these files seem to be row major
-                           at(r,c) = static_cast<float>(ptr[m_cols * r + c]);
-                       }
-                   }
-                   free(ptr);
-                   ret = 0;
+                   herr_t err = H5Dread(ds_id, H5T_IEEE_F64LE, memspace_id, dspace_id, H5P_DEFAULT, data());
+                   if(0<=err)
+                       ret = 0;
                }
                else
                {
@@ -62,19 +54,10 @@ int64_t FrameMem<float>::loadFromH5(std::string filename, std::string dataset, i
                H5Sget_simple_extent_dims(dspace_id, dims, NULL);
                if(dims[1] == m_rows && dims[2]==m_cols)
                {
-                   double* ptr = static_cast<double*>(malloc(m_rows * m_cols * sizeof(double)));
                    H5Sselect_hyperslab(dspace_id, H5S_SELECT_SET, dimsStart, NULL, dimsCount, NULL);
-                   H5Dread(ds_id, H5T_IEEE_F64LE, memspace_id, dspace_id, H5P_DEFAULT, ptr);
-                   for(int r=0;r<m_rows;++r)
-                   {
-                       for(int c=0;c<m_cols;++c)
-                       {
-                           at(r,c) = static_cast<float>(ptr[m_cols * r + c]);
-                       }
-                   }
-
-                   free(ptr);
-                   ret = 0;
+                   herr_t err = H5Dread(ds_id, H5T_IEEE_F64LE, memspace_id, dspace_id, H5P_DEFAULT, data());
+                   if(0<=err)
+                       ret = 0;
                }
                else
                {
@@ -111,7 +94,7 @@ int64_t FrameMem<uint16_t>::loadFromH5(std::string filename, std::string dataset
     if(0<=file_id)
     {
         hid_t ds_id = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
-        if(0<ds_id)
+        if(0<=ds_id)
         {
            hid_t dspace_id = H5Dget_space(ds_id);
            int ndims = H5Sget_simple_extent_ndims(dspace_id);
@@ -125,8 +108,9 @@ int64_t FrameMem<uint16_t>::loadFromH5(std::string filename, std::string dataset
                if(dims[1] == m_rows && dims[2]==m_cols)
                {
                    H5Sselect_hyperslab(dspace_id, H5S_SELECT_SET, dimsStart, NULL, dimsCount, NULL);
-                   H5Dread(ds_id, H5T_STD_U16LE, memspace_id, dspace_id, H5P_DEFAULT, data());
-                   rc = 0;
+                   herr_t err = H5Dread(ds_id, H5T_STD_U16LE, memspace_id, dspace_id, H5P_DEFAULT, data());
+                   if(0<=err)
+                       rc = 0;
                }
                else
                {

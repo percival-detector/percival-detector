@@ -46,10 +46,10 @@ BOOST_AUTO_TEST_CASE(LoadFromH5uint16Frame1)
     BOOST_CHECK_EQUAL(block.at(0,36), 3538);
 }
 
-BOOST_AUTO_TEST_CASE(LoadFromH5float)
+BOOST_AUTO_TEST_CASE(LoadFromH5double)
 {
     std::string pathToTestFiles("/dls/detectors/Percival/test_data/CalibRTests/");
-    MemBlockF block;
+    MemBlockD block;
     block.init(logger,rows, cols);
     block.loadFromH5(pathToTestFiles + "BSI04_Tminus20_dmuxSELsw_2019.11.20_ADCcor.h5", "/sample/coarse/offset", 0);
 
@@ -86,7 +86,8 @@ BOOST_AUTO_TEST_CASE(calibrationADC)
     calibratorS.m_Gain3 = 1.0f;
 
     MemBlockI16 input;
-    MemBlockF output, correct;
+    MemBlockF output; 
+    MemBlockD correct;
     input.init(logger,rows,cols);
     correct.init(logger,rows,cols);
     output.init(logger,rows,cols);
@@ -123,7 +124,8 @@ BOOST_AUTO_TEST_CASE(sampleCMACDA)
     calibratorS.loadADCGain(pathToTestFiles + "BSI04_Tminus20_dmuxSELsw_2019.11.20_ADCcor.h5");
 
     MemBlockI16 input;
-    MemBlockF reset, output, correct;
+    MemBlockF reset, output;
+    MemBlockD correct;
     input.init(logger, rows,cols);
     correct.init(logger, rows,cols);
     reset.init(logger, rows,cols);
@@ -173,7 +175,8 @@ BOOST_AUTO_TEST_CASE(sampleCDA_LAT)
     calibratorS.loadLatGain(pathToTestFiles + "latgainfile.h5");
 
     MemBlockI16 input;
-    MemBlockF reset, output, correct;
+    MemBlockF reset, output;
+    MemBlockD correct;
     input.init(logger,rows,cols);
     correct.init(logger,rows,cols);
     reset.init(logger,rows,cols);
@@ -238,7 +241,8 @@ BOOST_AUTO_TEST_CASE(sampleCMA_CDA_LAT)
     calibratorS.loadLatGain(pathToTestFiles + "latgainfile.h5");
 
     MemBlockI16 input;
-    MemBlockF reset, output, correct;
+    MemBlockF reset, output;
+    MemBlockD correct;
     input.init(logger,rows,cols);
     correct.init(logger,rows,cols);
     reset.init(logger,rows,cols);

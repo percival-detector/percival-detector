@@ -3,6 +3,7 @@
 
 #define FRAME_ROWS 1484
 #define FRAME_COLS 1408
+#define FRAMER_COLS 1440
 
 #define BOUNDS_CHECK 1
 
@@ -75,6 +76,15 @@ struct FrameMem
 
     FrameMem(const FrameMem&) = delete;
 
+    FrameMem& operator=(FrameMem&& rhs)
+    {
+        // this is copy-assignment move operator
+        memcpy(this, &rhs, sizeof(FrameMem));
+        rhs.m_ownMemory = false;
+        rhs.m_rows = rhs.m_cols = 0;
+        rhs.m_data = nullptr;
+    }
+
 
     void clone(FrameMem& source)
     {
@@ -122,6 +132,7 @@ private:
 };
 
 typedef FrameMem<float> MemBlockF;
+typedef FrameMem<double> MemBlockD;
 // rename MemBlockI16
 typedef FrameMem<uint16_t> MemBlockI16;
 

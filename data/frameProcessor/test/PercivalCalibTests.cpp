@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE(CalibratorCreateAndDestroy)
 
 BOOST_AUTO_TEST_CASE(LoggerWorksOk)
 {
-    LOG4CXX_ERROR(logger, "hi there");
+    LOG4CXX_ERROR(logger, "this just checks the logging is working");
 }
 
 // this one checks that IdOf is ok.

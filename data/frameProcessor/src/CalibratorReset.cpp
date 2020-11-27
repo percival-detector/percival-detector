@@ -128,14 +128,44 @@ void CalibratorReset::allocGainMem()
 int64_t CalibratorReset::loadADCGain(std::string filename)
 {
     int64_t rc = 0;
+    MemBlockD Gc;
+    MemBlockD Oc;
+    MemBlockD Gf;
+    MemBlockD Of;
 
     std::string group = "/reset";
     // group should look like "/sample" or "/reset"
 
-    m_Gc.loadFromH5(filename, group + "/coarse/slope", 0);
-    m_Oc.loadFromH5(filename, group + "/coarse/offset", 0);
-    m_Gf.loadFromH5(filename, group + "/fine/slope", 0);
-    m_Of.loadFromH5(filename, group + "/fine/offset", 0);
+    // unfortunate mismatch: the calib data has the ref cols included, but
+    // Percival drops them so the image is actually 32 cols smaller
+    Gc.init(m_logger, FRAME_ROWS, FRAMER_COLS);
+    Oc.init(m_logger, FRAME_ROWS, FRAMER_COLS);
+    Gf.init(m_logger, FRAME_ROWS, FRAMER_COLS);
+    Of.init(m_logger, FRAME_ROWS, FRAMER_COLS);
+
+    rc |= Gc.loadFromH5(filename, group + "/coarse/slope", 0);
+    rc |= Oc.loadFromH5(filename, group + "/coarse/offset", 0);
+    rc |= Gf.loadFromH5(filename, group + "/fine/slope", 0);
+    rc |= Of.loadFromH5(filename, group + "/fine/offset", 0);
+
+    int coffset = FRAMER_COLS - m_cols;
+    if(coffset==0 || coffset==32)
+    {
+        for(int r=0;r<m_rows;++r)
+        {
+            for(int c=0;c<m_cols;++c)
+            {
+                m_Gc.at(r,c) = Gc.at(r,c+coffset);
+                m_Oc.at(r,c) = Oc.at(r,c+coffset);
+                m_Gf.at(r,c) = Gf.at(r,c+coffset);
+                m_Of.at(r,c) = Of.at(r,c+coffset);
+            }
+        }
+    }
+    else
+    {
+        LOG4CXX_ERROR(m_logger, "calibrator dimensions wrong: " << m_rows << "," << m_cols);
+    }
 
    // listen up folks! The equation that they want is this:
    // idOf = 128.0*32;
