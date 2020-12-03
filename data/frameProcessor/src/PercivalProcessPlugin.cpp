@@ -7,7 +7,7 @@
 
 #include <PercivalProcessPlugin.h>
 #include <DataBlockFrame.h>
-#include "version.h"
+#include "percival_version.h"
 
 #include <limits>
 
@@ -89,27 +89,73 @@ namespace FrameProcessor
 
   int PercivalProcessPlugin::get_version_major()
   {
-    return ODIN_DATA_VERSION_MAJOR;
+    return PERCIVAL_VERSION_MAJOR;
   }
 
   int PercivalProcessPlugin::get_version_minor()
   {
-    return ODIN_DATA_VERSION_MINOR;
+    return PERCIVAL_VERSION_MINOR;
   }
 
   int PercivalProcessPlugin::get_version_patch()
   {
-    return ODIN_DATA_VERSION_PATCH;
+    return PERCIVAL_VERSION_PATCH;
   }
 
   std::string PercivalProcessPlugin::get_version_short()
   {
-    return ODIN_DATA_VERSION_STR_SHORT;
+    return PERCIVAL_VERSION_STR_SHORT;
   }
 
   std::string PercivalProcessPlugin::get_version_long()
   {
-    return ODIN_DATA_VERSION_STR;
+    return PERCIVAL_VERSION_STR;
+  }
+
+  //! This gets the info field from the buffer header and creates
+  // a data frame for it. Private function, not called by framework.
+  // you should set the frame number in the md before calling the function
+  // @param md a copy of the metadata
+  void PercivalProcessPlugin::processInfoField(const PercivalTransport::FrameHeader* hdrPtr, FrameMetaData md)
+  {  
+    dimensions_t info_dims{1, PercivalTransport::frame_info_size};
+    md.set_dataset_name("info");
+    md.set_dimensions(info_dims);
+    md.set_data_type(FrameProcessor::raw_8bit);
+
+    boost::shared_ptr<Frame> info_frame;
+    info_frame.reset(new DataBlockFrame(md, PercivalTransport::frame_info_size));
+    char* dest_ptr;
+    const char *src_ptr;
+    dest_ptr = (char *)info_frame->get_data_ptr();
+    src_ptr = (char const*)hdrPtr->frame_info;
+    memcpy(dest_ptr, src_ptr, PercivalTransport::frame_info_size);
+
+    LOG4CXX_TRACE(logger_, "Pushing info frame.");
+    this->push(info_frame);
+  }
+
+  //! This gets the original-framenum from the buffer header and creates
+  // a data frame for it. Private function, not called by framework.
+  // you should set the frame number in the md before calling the function
+  // @param md a copy of the metadata
+  void PercivalProcessPlugin::addFrameNumField(const PercivalTransport::FrameHeader* hdrPtr, FrameMetaData md)
+  {
+    dimensions_t fn_dims{1};
+    md.set_dataset_name("original_framenum");
+    md.set_dimensions(fn_dims);
+    md.set_data_type(FrameProcessor::raw_32bit);
+
+    boost::shared_ptr<Frame> fn_frame;
+    fn_frame.reset(new DataBlockFrame(md, 4));
+    char* dest_ptr;
+    const char *src_ptr;
+    dest_ptr = (char *)fn_frame->get_data_ptr();
+    src_ptr = (char const*)&hdrPtr->frame_number;
+    memcpy(dest_ptr, src_ptr, 4);
+
+    LOG4CXX_TRACE(logger_, "Pushing original_framenum frame.");
+    this->push(fn_frame);
   }
 
   void PercivalProcessPlugin::process_frame(boost::shared_ptr<Frame> frame)
@@ -125,7 +171,7 @@ namespace FrameProcessor
     size_t bytes_per_subframe_row = p2m_subframe_dims[1]*bytes_per_pixel;
 
     // Read out the frame header from the raw frame
-    const PercivalEmulator::FrameHeader* hdrPtr = static_cast<const PercivalEmulator::FrameHeader*>(frame->get_data_ptr());
+    const PercivalTransport::FrameHeader* hdrPtr = static_cast<const PercivalTransport::FrameHeader*>(frame->get_data_ptr());
     if(frame_base_==UNSET)
     {
         // we need hdrPtr->frame_number + frame_base_ == concurrent_rank_ for this first frame
@@ -150,33 +196,24 @@ namespace FrameProcessor
     char* dest_ptr;
     const char *src_ptr;
     FrameMetaData md = frame->meta_data();
-    dimensions_t info_dims{1, PercivalEmulator::frame_info_size};
-    md.set_dataset_name("info");
     md.set_frame_number(hdrPtr->frame_number);
     md.set_frame_offset(frame_base_);
-    md.set_dimensions(info_dims);
-    md.set_data_type(FrameProcessor::raw_8bit);
-    boost::shared_ptr<Frame> info_frame;
-    info_frame.reset(new DataBlockFrame(md, PercivalEmulator::frame_info_size));
-    dest_ptr = (char *)info_frame->get_data_ptr();
-    src_ptr = (char const*)hdrPtr->frame_info;
-    memcpy(dest_ptr, src_ptr, PercivalEmulator::frame_info_size);
 
-    LOG4CXX_TRACE(logger_, "Pushing info frame.");
-    this->push(info_frame);
+    processInfoField(hdrPtr, md);
+    addFrameNumField(hdrPtr, md);
 
     md.set_dataset_name("reset");
     md.set_dimensions(p2m_dims);
     md.set_data_type(FrameProcessor::raw_16bit);
     boost::shared_ptr<Frame> reset_frame;
-    reset_frame.reset(new DataBlockFrame(md, PercivalEmulator::data_type_size));
+    reset_frame.reset(new DataBlockFrame(md, PercivalTransport::data_type_size));
 
     // Copy data into frame
     // TODO: This is a fudge as the Frame object will not permit write access to the memory
     // TODO: Frame object needs an init method and also write access.
     dest_ptr = (char *)reset_frame->get_data_ptr();
     // can we use get_image_ptr() here?
-    src_ptr = (static_cast<const char*>(frame->get_data_ptr())+sizeof(PercivalEmulator::FrameHeader)+PercivalEmulator::data_type_size);
+    src_ptr = (static_cast<const char*>(frame->get_data_ptr())+sizeof(PercivalTransport::FrameHeader)+PercivalTransport::data_type_size);
     for (int row = 0; row < p2m_dims[0]; row++){
     	// Copy the first half of the row
     	memcpy(dest_ptr, src_ptr, bytes_per_subframe_row);
@@ -194,13 +231,13 @@ namespace FrameProcessor
 
     md.set_dataset_name("data");
     boost::shared_ptr<Frame> data_frame;
-    data_frame.reset(new DataBlockFrame(md, PercivalEmulator::data_type_size));
+    data_frame.reset(new DataBlockFrame(md, PercivalTransport::data_type_size));
 
     // Copy data into frame
     // TODO: This is a fudge as the Frame object will not permit write access to the memory
     // TODO: Frame object needs an init method and also write access.
     dest_ptr = (char *)data_frame->get_data_ptr();
-    src_ptr = (static_cast<const char*>(frame->get_data_ptr())+sizeof(PercivalEmulator::FrameHeader));
+    src_ptr = (static_cast<const char*>(frame->get_data_ptr())+sizeof(PercivalTransport::FrameHeader));
     for (int row = 0; row < p2m_dims[0]; row++){
     	// Copy the first half of the row
     	memcpy(dest_ptr, src_ptr, bytes_per_subframe_row);

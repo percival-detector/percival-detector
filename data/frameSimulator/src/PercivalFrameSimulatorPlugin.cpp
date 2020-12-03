@@ -1,11 +1,12 @@
 
 
-#include "version.h"
 #include "PercivalFrameSimulatorPlugin.h"
-#include "PercivalEmulatorDefinitions.h"
+#include "PercivalTransport.h"
 #include "FrameSimulatorOption.h"
 
 #include "DebugLevelLogger.h"
+
+#include "percival_version.h"
 
 #include <boost/lexical_cast.hpp>
 
@@ -34,8 +35,6 @@ namespace FrameSimulator {
 
         m_numPacketsFromPcap = 0;
         m_numFramesToCreate = 0;
-
-
     }
 
     void PercivalFrameSimulatorPlugin::populate_options(po::options_description& config)
@@ -76,10 +75,10 @@ namespace FrameSimulator {
     void PercivalFrameSimulatorPlugin::extract_frames(const u_char *indata, const int &size)
     {
         LOG4CXX_DEBUG_LEVEL(4, logger_, "Copying packet #" << m_numPacketsFromPcap);
-        const int idealSize = PercivalEmulator::primary_packet_size + PercivalEmulator::packet_header_size;
+        const int idealSize = PercivalTransport::primary_packet_size + PercivalTransport::packet_header_size;
         LOG4CXX_ASSERT(logger_, (idealSize == size), "packet " << m_numPacketsFromPcap << " in pcap file is the wrong size");
 
-        if(PercivalEmulator::packet_header_size <= size)
+        if(PercivalTransport::packet_header_size <= size)
         {
             void* buf = malloc(size);
             memcpy(buf, indata, size);
@@ -89,8 +88,8 @@ namespace FrameSimulator {
             pkt->size = size;
 
             // todo this will come from reading the pheader with ntohl
-            PercivalEmulator::PacketHeaderFields const* pHeader = 
-                                reinterpret_cast<PercivalEmulator::PacketHeaderFields const*>(indata);
+            PercivalTransport::PacketHeaderFields const* pHeader = 
+                                reinterpret_cast<PercivalTransport::PacketHeaderFields const*>(indata);
             int frameNum = pHeader->m_frame_number;
             bool bFound = false;
             for(int i=0;i<frames_.size() && bFound==false;++i)
@@ -122,20 +121,20 @@ namespace FrameSimulator {
     {
         m_numFramesToCreate = num_frames;
         LOG4CXX_DEBUG(logger_, "Creating frame(s) " << m_numFramesToCreate);
-        const int size = PercivalEmulator::primary_packet_size + PercivalEmulator::packet_header_size;
+        const int size = PercivalTransport::primary_packet_size + PercivalTransport::packet_header_size;
 
         for(int fr=0;fr<m_numFramesToCreate;++fr)
         {
             frames_.push_back( UDPFrame(fr) );
             uint16_t pixelCount;
             
-            for(int pt=0;pt<PercivalEmulator::num_data_types;++pt)
+            for(int pt=0;pt<PercivalTransport::num_data_types;++pt)
             {
                 // reset the count so the start of each data / reset frame is zero-pixel
                 pixelCount = 0;
-                for(int sf=0;sf<PercivalEmulator::num_subframes;++sf)
+                for(int sf=0;sf<PercivalTransport::num_subframes;++sf)
                 {
-                    for(int pk=0;pk<PercivalEmulator::num_primary_packets;++pk)
+                    for(int pk=0;pk<PercivalTransport::num_primary_packets;++pk)
                     {
                         boost::shared_ptr<Packet> pkt(new Packet());
                         void* buf = malloc(size);
@@ -143,21 +142,22 @@ namespace FrameSimulator {
                         pkt->data = static_cast<u_char*>(buf);
                         pkt->size = size;
 
-                        PercivalEmulator::PacketHeaderFields* pHeader = 
-                            static_cast<PercivalEmulator::PacketHeaderFields*>(buf);
+                        PercivalTransport::PacketHeaderFields* pHeader = 
+                            static_cast<PercivalTransport::PacketHeaderFields*>(buf);
 
+                        pHeader->m_datablock_size = htons(PercivalTransport::primary_packet_size);
                         pHeader->m_packet_type = pt;
                         pHeader->m_subframe_number = sf;
-                        pHeader->m_frame_number = htonl(fr);
+                        pHeader->m_frame_number = htonl(fr+1e7);
                         pHeader->m_packet_number = htons(pk);
-                        memset(pHeader->m_frame_info, 0x98, PercivalEmulator::frame_info_size);
+                        memset(pHeader->m_frame_info, 0x98, PercivalTransport::frame_info_size);
 
-                        uint16_t* pixels = static_cast<uint16_t*>(buf)+PercivalEmulator::packet_header_size/2;
-                        for(int pix=0;pix<PercivalEmulator::primary_packet_size/2;++pix)
+                        uint16_t* pixels = static_cast<uint16_t*>(buf)+PercivalTransport::packet_header_size/2;
+                        for(int pix=0;pix<PercivalTransport::primary_packet_size/2;++pix)
                         {
                             if(m_packetFillMode == ePacketId)
                             {
-                                pixels[pix] = pk + sf * PercivalEmulator::num_primary_packets;
+                                pixels[pix] = pk + sf * PercivalTransport::num_primary_packets;
                             }
                             else if(m_packetFillMode == eIncrementing)
                             {
@@ -179,7 +179,7 @@ namespace FrameSimulator {
     * \return major version number as an integer
     */
     int PercivalFrameSimulatorPlugin::get_version_major() {
-        return ODIN_DATA_VERSION_MAJOR;
+        return PERCIVAL_VERSION_MAJOR;
     }
 
     /**
@@ -188,7 +188,7 @@ namespace FrameSimulator {
      * \return minor version number as an integer
      */
     int PercivalFrameSimulatorPlugin::get_version_minor() {
-        return ODIN_DATA_VERSION_MINOR;
+        return PERCIVAL_VERSION_MINOR;
     }
 
     /**
@@ -197,7 +197,7 @@ namespace FrameSimulator {
      * \return patch version number as an integer
      */
     int PercivalFrameSimulatorPlugin::get_version_patch() {
-        return ODIN_DATA_VERSION_PATCH;
+        return PERCIVAL_VERSION_PATCH;
     }
 
     /**
@@ -206,7 +206,7 @@ namespace FrameSimulator {
      * \return short version as a string
      */
     std::string PercivalFrameSimulatorPlugin::get_version_short() {
-        return ODIN_DATA_VERSION_STR_SHORT;
+        return PERCIVAL_VERSION_STR_SHORT;
     }
 
     /**
@@ -215,7 +215,7 @@ namespace FrameSimulator {
      * \return long version as a string
      */
     std::string PercivalFrameSimulatorPlugin::get_version_long() {
-        return ODIN_DATA_VERSION_STR;
+        return PERCIVAL_VERSION_STR;
     }
 
 }

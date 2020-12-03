@@ -2,7 +2,7 @@
 
 #include <PercivalProcess2Plugin.h>
 #include <DataBlockFrame.h>
-#include "version.h"
+#include "percival_version.h"
 
 namespace FrameProcessor
 {
@@ -78,27 +78,50 @@ namespace FrameProcessor
 
   int PercivalProcess2Plugin::get_version_major()
   {
-    return ODIN_DATA_VERSION_MAJOR;
+    return PERCIVAL_VERSION_MAJOR;
   }
 
   int PercivalProcess2Plugin::get_version_minor()
   {
-    return ODIN_DATA_VERSION_MINOR;
+    return PERCIVAL_VERSION_MINOR;
   }
 
   int PercivalProcess2Plugin::get_version_patch()
   {
-    return ODIN_DATA_VERSION_PATCH;
+    return PERCIVAL_VERSION_PATCH;
   }
 
   std::string PercivalProcess2Plugin::get_version_short()
   {
-    return ODIN_DATA_VERSION_STR_SHORT;
+    return PERCIVAL_VERSION_STR_SHORT;
   }
 
   std::string PercivalProcess2Plugin::get_version_long()
   {
-    return ODIN_DATA_VERSION_STR;
+    return PERCIVAL_VERSION_STR;
+  }
+
+  //! This gets the info field from the buffer header and creates
+  // a data frame for it. Private function, not called by framework.
+  // you should set the frame number in the md before calling the function
+  // @param md a copy of the metadata
+  void PercivalProcess2Plugin::processInfoField(const PercivalTransport::FrameHeader* hdrPtr, FrameMetaData md)
+  {  
+    dimensions_t info_dims{1, PercivalTransport::frame_info_size};
+    md.set_dataset_name("info");
+    md.set_dimensions(info_dims);
+    md.set_data_type(FrameProcessor::raw_8bit);
+
+    boost::shared_ptr<Frame> info_frame;
+    info_frame.reset(new DataBlockFrame(md, PercivalTransport::frame_info_size));
+    char* dest_ptr;
+    const char *src_ptr;
+    dest_ptr = (char *)info_frame->get_data_ptr();
+    src_ptr = (char const*)hdrPtr->frame_info;
+    memcpy(dest_ptr, src_ptr, PercivalTransport::frame_info_size);
+
+    LOG4CXX_TRACE(logger_, "Pushing info frame.");
+    this->push(info_frame);
   }
 
   void PercivalProcess2Plugin::process_frame(boost::shared_ptr<Frame> frame)
@@ -106,22 +129,24 @@ namespace FrameProcessor
     LOG4CXX_TRACE(logger_, "Processing raw frame.");
 
     // Read out the frame header from the raw frame
-    const PercivalEmulator::FrameHeader* hdrPtr = static_cast<const PercivalEmulator::FrameHeader*>(frame->get_data_ptr());
+    const PercivalTransport::FrameHeader* hdrPtr = static_cast<const PercivalTransport::FrameHeader*>(frame->get_data_ptr());
     LOG4CXX_TRACE(logger_, "Raw frame number: " << hdrPtr->frame_number << " offset frame number: " << frame_counter_);
 
     dimensions_t p2m_dims(2); p2m_dims[0] = 1484; p2m_dims[1] = 1408;
 
     FrameMetaData md = frame->meta_data();
     md.set_frame_number(frame_counter_);
+    processInfoField(hdrPtr, md);
+    
     md.set_dimensions(p2m_dims);
     md.set_data_type(FrameProcessor::raw_16bit);
     md.set_dataset_name("data");
     boost::shared_ptr<Frame> data_frame;
-    data_frame.reset(new DataBlockFrame(md, PercivalEmulator::data_type_size));
+    data_frame.reset(new DataBlockFrame(md, PercivalTransport::data_type_size));
 
     // this needs to be incorporated into the descrambler board
     char *dest_ptr = (char *)data_frame->get_data_ptr();
-    const char *src_ptr = (static_cast<const char*>(frame->get_data_ptr())+sizeof(PercivalEmulator::FrameHeader)+PercivalEmulator::data_type_size);
+    const char *src_ptr = (static_cast<const char*>(frame->get_data_ptr())+sizeof(PercivalTransport::FrameHeader)+PercivalTransport::data_type_size);
 
     uint32_t bpp = 2;
     uint32_t step_pos = p2m_dims[1] / 4 * 7;
@@ -135,16 +160,15 @@ namespace FrameProcessor
         dest_ptr += step_pos * bpp;
         src_ptr += step_pos * bpp;
     }
-    LOG4CXX_TRACE(logger_, "Pushing data frame.");
-    this->push(data_frame);
+
 
     md.set_dataset_name("reset");
     boost::shared_ptr<Frame> reset_frame;
-    reset_frame.reset(new DataBlockFrame(md, PercivalEmulator::data_type_size));
+    reset_frame.reset(new DataBlockFrame(md, PercivalTransport::data_type_size));
 
     dest_ptr = (char *)reset_frame->get_data_ptr();
     // can we use get_image_ptr() here?
-    src_ptr = (static_cast<const char*>(frame->get_data_ptr())+sizeof(PercivalEmulator::FrameHeader));
+    src_ptr = (static_cast<const char*>(frame->get_data_ptr())+sizeof(PercivalTransport::FrameHeader));
 
     for(uint32_t offset = 0; offset < half_frame; offset += step_pos)
     {
@@ -157,6 +181,9 @@ namespace FrameProcessor
 
     LOG4CXX_TRACE(logger_, "Pushing reset frame.");
     this->push(reset_frame);
+
+    LOG4CXX_TRACE(logger_, "Pushing data frame.");
+    this->push(data_frame);
 
     // Increment local frame counter
     frame_counter_ += this->concurrent_processes_;

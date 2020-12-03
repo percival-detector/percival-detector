@@ -3,8 +3,11 @@
 
 #define FRAME_ROWS 1484
 #define FRAME_COLS 1408
+#define FRAMER_COLS 1440
 
 #define BOUNDS_CHECK 1
+
+#include <log4cxx/logger.h>
 
 #include <string>
 #include <cassert>
@@ -32,8 +35,9 @@ struct FrameMem
             free(m_data);
     }
 
-    void init(int rows, int cols, void* ptr=nullptr)
+    void init(log4cxx::LoggerPtr logger, int rows, int cols, void* ptr=nullptr)
     {
+        m_logger = logger;
         m_rows = rows; m_cols = cols;
         m_dataQty = m_rows * m_cols;
         if(m_data && m_ownMemory)
@@ -57,30 +61,49 @@ struct FrameMem
         }
     }
 
-    // for some T, this can load a 2d dataset, and then the frameNo is ignored.
-    int64_t loadFromH5(std::string filename, std::string dataset, int frameNo, std::string* outError=nullptr);
+    // this can load a 2 or 3d dataset. frameNo is only used with 3d datasets.
+    int64_t loadFromH5(std::string filename, std::string dataset, int frameNo);
 
     void setAll(T val)
     {
         if(m_data)
         {
-            for(int c=0;c<m_cols;++c)
-                for(int r=0;r<m_rows;++r)
-                    m_data[r*m_cols + c] = val;
+            for(int r=0;r<m_rows;++r)
+                for(int c=0;c<m_cols;++c)
+                    at(r,c) = val;
         }
     }
 
     FrameMem(const FrameMem&) = delete;
 
+    FrameMem& operator=(FrameMem&& rhs)
+    {
+        // this is copy-assignment move operator
+        memcpy(this, &rhs, sizeof(FrameMem));
+        rhs.m_ownMemory = false;
+        rhs.m_rows = rhs.m_cols = 0;
+        rhs.m_data = nullptr;
+    }
+
 
     void clone(FrameMem& source)
     {
-        init(source.rows(), source.cols());
+        init(source.m_logger, source.rows(), source.cols());
         memcpy(data(), source.data(), m_dataQty * sizeof(T));
     }
 
     T& at(int r, int c)
     {
+#if BOUNDS_CHECK
+        if(r < 0 || rows() <= r)
+        {
+            LOG4CXX_ERROR(m_logger, "out of bounds: row " << r << " in FrameMem with rows " << rows());
+        }
+        if(c < 0 || cols() <= c)
+        {
+            LOG4CXX_ERROR(m_logger, "out of bounds: col " << c << " in FrameMem with cols " << cols());
+        }
+#endif
         return at(r * m_cols + c);
     }
     T& at(int idx)
@@ -88,8 +111,7 @@ struct FrameMem
 #if BOUNDS_CHECK
         if(idx < 0 || m_dataQty <= idx)
         {
-            std::cout << "Error out of bounds at " << idx << " in FrameMem with capacity " << m_dataQty << std::endl;
-            assert(false);
+            LOG4CXX_ERROR(m_logger, "out of bounds at " << idx << " in FrameMem with capacity " << m_dataQty);
         }
 #endif
         return m_data[idx];
@@ -105,9 +127,12 @@ private:
     bool m_ownMemory;
     int m_rows, m_cols, m_dataQty;
     T* m_data;
+
+    log4cxx::LoggerPtr m_logger;
 };
 
 typedef FrameMem<float> MemBlockF;
+typedef FrameMem<double> MemBlockD;
 // rename MemBlockI16
 typedef FrameMem<uint16_t> MemBlockI16;
 

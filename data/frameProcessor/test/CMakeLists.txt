@@ -4,12 +4,12 @@ ADD_DEFINITIONS(-DBOOST_TEST_DYN_LINK)
 ADD_DEFINITIONS(-DBUILD_DIR="${CMAKE_BINARY_DIR}")
 
 include_directories(${FRAMEPROCESSOR_DIR}/include ${ODINDATA_INCLUDE_DIRS} 
-	${Boost_INCLUDE_DIRS} ${LOG4CXX_INCLUDE_DIRS}/.. ${ZEROMQ_INCLUDE_DIRS})
+	${Boost_INCLUDE_DIR} ${LOG4CXX_INCLUDE_DIR}/.. ${ZEROMQ_INCLUDE_DIRS})
 
 # Build list of test source files from current dir
 file(GLOB TEST_SOURCES *.cpp)
 
-set (CMAKE_CXX_FLAGS "-mavx -w -std=c++11")
+set (CMAKE_CXX_FLAGS "-mavx -w -std=c++11 ${CMAKE_CXX_FLAGS}")
 
 
 # Add test and project source files to executable
@@ -37,11 +37,13 @@ target_link_libraries(percivalFrameProcessorTest
 target_link_libraries(percivalCalibTest
         PercivalCalib
 		${Boost_LIBRARIES}
+		${LOG4CXX_LIBRARIES}
 )
 
 target_link_libraries(percivalCalibRegressionTest
         PercivalCalib
 		${Boost_LIBRARIES}
+		${LOG4CXX_LIBRARIES}
 )
 
 target_link_libraries(SimdTest

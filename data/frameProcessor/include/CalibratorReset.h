@@ -20,7 +20,6 @@
 class CalibratorReset : public Calibrator
 {
 public:
-    CalibratorReset() {};
     CalibratorReset(int rows, int cols);
     ~CalibratorReset();
     void processFrame(MemBlockI16& input, MemBlockF& output);

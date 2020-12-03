@@ -10,7 +10,7 @@ using namespace log4cxx;
 using namespace log4cxx::helpers;
 
 #include "FrameProcessorPlugin.h"
-#include "PercivalEmulatorDefinitions.h"
+#include "PercivalTransport.h"
 #include "ClassLoader.h"
 
 #include "FrameMem.h"

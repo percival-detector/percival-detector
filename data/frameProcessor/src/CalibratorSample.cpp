@@ -4,14 +4,16 @@
 
 #include <boost/bind.hpp>
 #include <iostream>
+#include <sstream>
 
 
 // it's probably a bad idea to put this here!
-static const int max_threads = 16;
+static const int max_threads = 6;
 static tbb::task_scheduler_init init(max_threads);
 
 CalibratorSample::CalibratorSample(int rows, int cols)
 {
+    m_logger = log4cxx::Logger::getLogger("FP.SCalibrator");
     m_rows = rows;
     m_cols = cols;
 
@@ -34,7 +36,9 @@ void CalibratorSample::processFrame(MemBlockI16& input, MemBlockF& output)
 void CalibratorSample::processFrameP(MemBlockI16& input, MemBlockF& output)
 {
     auto fn = boost::bind(&CalibratorSample::processFrameRowsTBB, this, &input, &output, _1);
-    tbb::parallel_for( tbb::blocked_range<int>(0,m_rows,50), fn, tbb::simple_partitioner());
+    // blocked_range(begin, end, grain G)
+    // Using simple_partitioner guarantees that ⌈G/2⌉ ≤ chunksize ≤ G. 
+    tbb::parallel_for( tbb::blocked_range<int>(0,m_rows,150), fn, tbb::simple_partitioner());
 }
 
 void CalibratorSample::processFrameRowsTBB(MemBlockI16* pInput, MemBlockF* pOutput, tbb::blocked_range<int> rows)
@@ -67,7 +71,7 @@ float CalibratorSample::getCMAVal(MemBlockI16& gainBlock, MemBlockF& output, int
     float cmaVal = total / numCMACols;
     if(m_debugRow == row)
     {
-        std::cout << "CMA value for row " << row << ": " << cmaVal << std::endl;
+        LOG4CXX_INFO(m_logger, "CMA value for row " << row << ": " << cmaVal);
     }
     return cmaVal;
 }
@@ -111,31 +115,33 @@ void CalibratorSample::processFrameRow(MemBlockI16& input, MemBlockF& output, in
 
           if(m_debugRow == row)
           {
+                std::stringstream sstr;
                 size_t pixel_index = row * m_cols + m_debugCol;
-                std::cout << "at " << row << "," << m_debugCol << std::endl;
-                std::cout << "ADC value:" << valueADC << std::endl;
-                std::cout << "2-bit Gain value:" << gain << std::endl;
-                std::cout << "Reset pixel:" << m_resetFrame.at(pixel_index) << std::endl;
+                sstr << " at " << row << "," << m_debugCol;
+                sstr << " ADC value:" << valueADC;
+                sstr << " 2-bit Gain value:" << gain;
+                sstr << " Reset pixel:" << m_resetFrame.at(pixel_index);
                 if(gain==0)
                 {
-                    std::cout << "Ped Value:" << m_Ped0.at(pixel_index) << std::endl;
-                    std::cout << "Gain Value:" << m_Gain0.at(pixel_index) << std::endl;
+                    sstr << " Ped Value:" << m_Ped0.at(pixel_index);
+                    sstr << " Gain Value:" << m_Gain0.at(pixel_index);
                 }
                 else if(gain==1)
                 {
-                    std::cout << "Ped Value:" << m_Ped1.at(pixel_index) << std::endl;
-                    std::cout << "Gain Value:" << m_Gain1.at(pixel_index) << std::endl;
+                    sstr << " Ped Value:" << m_Ped1.at(pixel_index) << std::endl;
+                    sstr << " Gain Value:" << m_Gain1.at(pixel_index) << std::endl;
                 }
                 else if(gain==2)
                 {
-                    std::cout << "Ped Value:" << m_Ped2.at(pixel_index) << std::endl;
-                    std::cout << "Gain Value:" << m_Gain2.at(pixel_index) << std::endl;
+                    sstr << " Ped Value:" << m_Ped2.at(pixel_index) << std::endl;
+                    sstr << " Gain Value:" << m_Gain2.at(pixel_index) << std::endl;
                 }
+                LOG4CXX_INFO(m_logger, sstr.str());
           }
 
           switch (gain) {
             case 0b00:
-            // this is the CDS stage
+              // subtracting the reset is the CDS stage
               valueADC -= m_resetFrame.at(pixel_index);
               valueADC -= m_Ped0.at(pixel_index);
               valueADC *= m_Gain0.at(pixel_index);
@@ -258,20 +264,20 @@ void CalibratorSample::processFrameRowSIMD(MemBlockI16& input, MemBlockF& output
 
 void CalibratorSample::allocGainMem()
 {
-    m_Gc.init(m_rows, m_cols);
-    m_Oc.init(m_rows, m_cols);
-    m_Gf.init(m_rows, m_cols);
-    m_Of.init(m_rows, m_cols);
+    m_Gc.init(m_logger, m_rows, m_cols);
+    m_Oc.init(m_logger, m_rows, m_cols);
+    m_Gf.init(m_logger, m_rows, m_cols);
+    m_Of.init(m_logger, m_rows, m_cols);
 
-    m_Gain0.init(m_rows, m_cols);
-    m_Gain1.init(m_rows, m_cols);
-    m_Gain2.init(m_rows, m_cols);
+    m_Gain0.init(m_logger, m_rows, m_cols);
+    m_Gain1.init(m_logger, m_rows, m_cols);
+    m_Gain2.init(m_logger, m_rows, m_cols);
 
-    m_Ped0.init(m_rows, m_cols);
-    m_Ped1.init(m_rows, m_cols);
-    m_Ped2.init(m_rows, m_cols);
+    m_Ped0.init(m_logger, m_rows, m_cols);
+    m_Ped1.init(m_logger, m_rows, m_cols);
+    m_Ped2.init(m_logger, m_rows, m_cols);
 
-    m_resetFrame.init(m_rows, m_cols);
+    m_resetFrame.init(m_logger, m_rows, m_cols);
     // set the values to something nilpotent mainly for the benefit
     // of testing.
     m_resetFrame.setAll(0.0f);
@@ -287,14 +293,41 @@ void CalibratorSample::allocGainMem()
 int64_t CalibratorSample::loadADCGain(std::string filename)
 {
     int64_t rc = 0;
+    MemBlockD Gc, Oc, Gf, Of;
 
     std::string group = "/sample";
     // group should look like "/sample" or "/reset"
 
-    rc |= m_Gc.loadFromH5(filename, group + "/coarse/slope", 0);
-    rc |= m_Oc.loadFromH5(filename, group + "/coarse/offset", 0);
-    rc |= m_Gf.loadFromH5(filename, group + "/fine/slope", 0);
-    rc |= m_Of.loadFromH5(filename, group + "/fine/offset", 0);
+    // unfortunate mismatch: the calib data has the ref cols included, but
+    // Percival drops them so the image is actually 32 cols smaller
+    Gc.init(m_logger, FRAME_ROWS, FRAMER_COLS);
+    Oc.init(m_logger, FRAME_ROWS, FRAMER_COLS);
+    Gf.init(m_logger, FRAME_ROWS, FRAMER_COLS);
+    Of.init(m_logger, FRAME_ROWS, FRAMER_COLS);
+
+    rc |= Gc.loadFromH5(filename, group + "/coarse/slope", 0);
+    rc |= Oc.loadFromH5(filename, group + "/coarse/offset", 0);
+    rc |= Gf.loadFromH5(filename, group + "/fine/slope", 0);
+    rc |= Of.loadFromH5(filename, group + "/fine/offset", 0);
+
+    int coffset = FRAMER_COLS - m_cols;
+    if(coffset==0 || coffset==32)
+    {
+        for(int r=0;r<m_rows;++r)
+        {
+            for(int c=0;c<m_cols;++c)
+            {
+                m_Gc.at(r,c) = Gc.at(r,c+coffset);
+                m_Oc.at(r,c) = Oc.at(r,c+coffset);
+                m_Gf.at(r,c) = Gf.at(r,c+coffset);
+                m_Of.at(r,c) = Of.at(r,c+coffset);
+            }
+        }
+    }
+    else
+    {
+        LOG4CXX_ERROR(m_logger, "calibrator dimensions wrong: " << m_rows << "," << m_cols);
+    }
 
    // listen up folks! The equation that they want is this:
    // idOf = 128.0*32;
@@ -322,21 +355,51 @@ int64_t CalibratorSample::loadADCGain(std::string filename)
 int64_t CalibratorSample::loadLatGain(std::string filename)
 {
     int64_t rc = 0;
+    MemBlockD Ped0, Ped1, Ped2, Gain0, Gain1, Gain2;
+    Ped0.init(m_logger, FRAME_ROWS, FRAMER_COLS);
+    Ped1.init(m_logger, FRAME_ROWS, FRAMER_COLS);
+    Ped2.init(m_logger, FRAME_ROWS, FRAMER_COLS);
 
-    rc |= m_Ped0.loadFromH5(filename, "Pedestal_ADU", 0);
-    rc |= m_Ped1.loadFromH5(filename, "Pedestal_ADU", 1);
-    rc |= m_Ped2.loadFromH5(filename, "Pedestal_ADU", 2);
+    Gain0.init(m_logger, FRAME_ROWS, FRAMER_COLS);
+    Gain1.init(m_logger, FRAME_ROWS, FRAMER_COLS);
+    Gain2.init(m_logger, FRAME_ROWS, FRAMER_COLS);
 
-    rc |= m_Gain0.loadFromH5(filename, "e_per_ADU", 0);
-    rc |= m_Gain1.loadFromH5(filename, "e_per_ADU", 1);
-    rc |= m_Gain2.loadFromH5(filename, "e_per_ADU", 2);
+    rc |= Ped0.loadFromH5(filename, "Pedestal_ADU", 0);
+    rc |= Ped1.loadFromH5(filename, "Pedestal_ADU", 1);
+    rc |= Ped2.loadFromH5(filename, "Pedestal_ADU", 2);
+
+    rc |= Gain0.loadFromH5(filename, "e_per_ADU", 0);
+    rc |= Gain1.loadFromH5(filename, "e_per_ADU", 1);
+    rc |= Gain2.loadFromH5(filename, "e_per_ADU", 2);
+
+    int coffset = FRAMER_COLS - m_cols;
+    if(coffset==0 || coffset==32)
+    {
+        for(int r=0;r<m_rows;++r)
+        {
+            for(int c=0;c<m_cols;++c)
+            {
+                m_Ped0.at(r,c) = Ped0.at(r,c+coffset);
+                m_Ped1.at(r,c) = Ped1.at(r,c+coffset);
+                m_Ped2.at(r,c) = Ped2.at(r,c+coffset);
+
+                m_Gain0.at(r,c) = Gain0.at(r,c+coffset);
+                m_Gain1.at(r,c) = Gain1.at(r,c+coffset);
+                m_Gain2.at(r,c) = Gain2.at(r,c+coffset);
+            }
+        }
+    }
+    else
+    {
+        LOG4CXX_ERROR(m_logger, "calibrator dimensions wrong: " << m_rows << "," << m_cols);
+    }
 
     return rc;
 }
 
 void CalibratorSample::setResetFrame(MemBlockF& reset)
 {
-    m_resetFrame.init(reset.rows(),reset.cols(),reset.data());
+    m_resetFrame.init(m_logger, reset.rows(),reset.cols(),reset.data());
 }
 
 

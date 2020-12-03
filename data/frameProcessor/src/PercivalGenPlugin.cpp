@@ -6,7 +6,7 @@
  */
 
 #include "PercivalGenPlugin.h"
-#include "version.h"
+#include "percival_version.h"
 
 #include <FrameMetaData.h>
 #include <DataBlockFrame.h>
@@ -98,27 +98,27 @@ namespace FrameProcessor
 
   int PercivalGenPlugin::get_version_major()
   {
-    return ODIN_DATA_VERSION_MAJOR;
+    return PERCIVAL_VERSION_MAJOR;
   }
 
   int PercivalGenPlugin::get_version_minor()
   {
-    return ODIN_DATA_VERSION_MINOR;
+    return PERCIVAL_VERSION_MINOR;
   }
 
   int PercivalGenPlugin::get_version_patch()
   {
-    return ODIN_DATA_VERSION_PATCH;
+    return PERCIVAL_VERSION_PATCH;
   }
 
   std::string PercivalGenPlugin::get_version_short()
   {
-    return ODIN_DATA_VERSION_STR_SHORT;
+    return PERCIVAL_VERSION_STR_SHORT;
   }
 
   std::string PercivalGenPlugin::get_version_long()
   {
-    return ODIN_DATA_VERSION_STR;
+    return PERCIVAL_VERSION_STR;
   }
 
   void PercivalGenPlugin::process_frame(boost::shared_ptr<Frame> frame)
