@@ -52,6 +52,9 @@ namespace FrameProcessor
     // the frame-number of the last reset frame
     uint32_t m_resetFrameNumber;
     bool m_loadedConstants;
+
+    bool m_loadedDarkFrame;
+    MemBlockF m_darkFrame;
   };
 
   /**

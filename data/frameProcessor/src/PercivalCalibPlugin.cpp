@@ -7,6 +7,7 @@
 
 #include "PercivalCalibPlugin.h"
 #include "percival_version.h"
+#include "SIMDMacros.h"
 
 #include <FrameMetaData.h>
 #include <DataBlockFrame.h>
@@ -35,11 +36,18 @@ namespace FrameProcessor
     // if it is missing initially, or set to -1 then cma averaging will not happen.
     const std::string CONFIG_CMACOL                    = "cmacol";
 
+    // Dark frame is in a dataset called "darkframe" and will be 1xrowsxcols doubles
+    // where rows, cols is the dimensions of the output image, not the same as the
+    // dimensions of the calib-frames. The darkframe is subtracted from the output
+    // if it exists. To switch off darkframe, just supply "off" or "" as the filename.
+    const std::string CONFIG_DARKFRAME                 = "darkframe";
+
     PercivalCalibPlugin::PercivalCalibPlugin() :
     frame_counter_(0),
     concurrent_processes_(1),
     concurrent_rank_(0),
     m_loadedConstants(false),
+    m_loadedDarkFrame(false),
     m_calibratorReset(FRAME_ROWS, FRAME_COLS),
     m_calibratorSample(FRAME_ROWS, FRAME_COLS)
   {
@@ -86,7 +94,6 @@ namespace FrameProcessor
     if (config.has_param(CONFIG_CONSTANTSFILE))
     {
       std::string filename(config.get_param<std::string>(CONFIG_CONSTANTSFILE));
-      LOG4CXX_INFO(logger_, "calib file:" << filename);
       m_loadedConstants = false;
       if(access(filename.c_str(), R_OK)==0)
       {
@@ -105,6 +112,7 @@ namespace FrameProcessor
             }
             else
             {
+                LOG4CXX_INFO(logger_, "calib constants loaded from " << filename);
                 m_loadedConstants = true;
             }
         }
@@ -112,6 +120,44 @@ namespace FrameProcessor
       else
       {
         LOG4CXX_ERROR(logger_, "Can not find / open " << filename);
+      }
+    }
+
+    if (config.has_param(CONFIG_DARKFRAME))
+    {
+      std::string filename(config.get_param<std::string>(CONFIG_DARKFRAME));
+      m_loadedDarkFrame = false;
+      if(filename=="off" || filename.size()==0)
+      {
+        LOG4CXX_INFO(logger_, "darkframe off");
+      }
+      else
+      {
+        if(access(filename.c_str(), R_OK)==0)
+        {
+            // this is bizarre, but all our files are typed as doubles, but we use floats.
+            MemBlockD darkFrame;
+            darkFrame.init(logger_, FRAME_ROWS, FRAME_COLS);
+            rc = darkFrame.loadFromH5(filename, "darkframe", 0);
+            if(rc==0)
+            {
+                LOG4CXX_INFO(logger_, "darkframe loaded from " << filename);
+                m_darkFrame.init(logger_, FRAME_ROWS, FRAME_COLS);
+                for(int r=0;r<FRAME_ROWS;++r)
+                    for(int c=0;c<FRAME_COLS;++c)
+                        m_darkFrame.at(r,c) = darkFrame.at(r,c);
+
+                m_loadedDarkFrame = true;
+            }
+            else
+            {
+                LOG4CXX_ERROR(logger_, "can not load darkframe dataset from " << filename);
+            }
+        }
+        else
+        {
+            LOG4CXX_ERROR(logger_, "can not find/open file: " << filename);
+        }
       }
     }
   }
@@ -148,6 +194,26 @@ namespace FrameProcessor
     return PERCIVAL_VERSION_STR;
   }
 
+#ifdef __AVX__
+  // this is a bit of temporary code we use 'cos it is faster; if we like it,
+  // we will move it. There is still a possibility of using TBB too.
+  static inline void subtractSIMD(MemBlockF& lhs, MemBlockF& rhs)
+  {
+     for(int r=0;r<lhs.rows();++r)
+     {
+        for(int c=0;c<lhs.cols();c += 8)
+        {
+            float* plhs1 = &lhs.at(r,c);
+            float* prhs1 = &rhs.at(r,c);
+            SIMD8f lhs1 = Load8f(plhs1);
+            SIMD8f rhs1 = Load8f(prhs1);
+            lhs1 = Sub8f(lhs1,rhs1);
+            Store8f(plhs1,lhs1);
+        }
+     }
+  }
+#endif
+
   void PercivalCalibPlugin::process_frame(boost::shared_ptr<Frame> frame)
   {
     if(m_loadedConstants == false)
@@ -175,6 +241,12 @@ namespace FrameProcessor
 
             LOG4CXX_TRACE(logger_, "Processing calib frame");
             m_calibratorSample.processFrameP(in,out);
+
+            if(m_loadedDarkFrame)
+            {
+                // out -= m_darkFrame;
+                subtractSIMD(out, m_darkFrame);
+            }
 
             this->push(newfr);
         }
