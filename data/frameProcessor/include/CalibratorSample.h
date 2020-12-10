@@ -31,11 +31,7 @@ public:
     // this does no copying, so keep reset alive yourself.
     void setResetFrame(MemBlockF& reset);
     // use this to turn on cma; firstCol is only used when it's ON. cma is off by default.
-    void setCMA(bool on, int firstCol)
-    {
-        m_cmaFlag = on;
-        m_cmaFirstCol = firstCol;
-    }
+    void setCMA(bool on, int firstCol);
 
 // this are private really, but the testing needs to get hold of them!
     // this can return NaN.
@@ -66,4 +62,5 @@ public:
     int m_cmaFirstCol = 0;
 };
 
+static const int numCMACols = 32;
 
