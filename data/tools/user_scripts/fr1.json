@@ -1,0 +1,19 @@
+
+[
+  { 
+    "debug_level": 0,
+    "max_buffer_mem": 840000000,
+    "frame_ready_endpoint": "tcp://*:5001",
+    "frame_release_endpoint": "tcp://*:5002",
+    "shared_buffer_name": "PercivalFrameBuffer01",
+    "rx_address": "196.254.1.8",
+    "rx_ports": "8000,8001",
+    "decoder_type": "Percival",
+    "decoder_path": "/opt/percival-detector/lib",
+    "decoder_config": {
+      "enable_packet_logging": false,
+      "frame_timeout_ms": 1000
+    }
+  }
+]
+

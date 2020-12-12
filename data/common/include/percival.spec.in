@@ -1,0 +1,75 @@
+
+
+Name: percival
+
+# version is replaced by the build system when it looks at git tags.
+Version: @VERSION_SHORT@
+
+Release: 1
+
+Summary: Plugins for Odin/Percival.
+
+License: Apache License 2.0
+
+URL: https://github.com/percival-detector/percival-detector
+
+Requires: libpcap, zeromq, tbb, boost
+
+# allow unused files in buildroot dir
+%define _unpackaged_files_terminate_build 0
+
+%description
+Plugins for the Odin DAQ for the Percival detector.
+
+See
+https://github.com/percival-detector/percival-detector
+https://github.com/odin-detector/odin-data
+
+%prep
+
+%build
+
+%install
+mkdir -p %{buildroot}/opt/percival-detector
+mkdir -p %{buildroot}/opt/percival-detector/odin
+
+# this is for you to alter as appropriate.
+USERSCRIPTS=$HOME/Projects/percival-detector/data/tools/user_scripts
+PLUGINSDIR=$HOME/Projects/percival-detector/data/build/prefix
+ODINPREFIX=$HOME/Projects/odin-data/build/prefix
+# H5PREFIX=/dls_sw/prod/tools/RHEL7-x86_64/hdf5/1-12-0/prefix
+H5PREFIX=/dls/detectors/LATRD/software/ext_src/hdf5/1-12-0/prefix
+LOG4CXXPREFIX=/dls_sw/prod/tools/RHEL7-x86_64/log4cxx/0-10-0dls2/prefix
+NEWRPATH=/opt/percival-detector/odin/lib/
+
+cp -r ${USERSCRIPTS} %{buildroot}/opt/percival-detector
+cp -r ${ODINPREFIX}/bin %{buildroot}/opt/percival-detector/odin/
+cp -r ${ODINPREFIX}/lib %{buildroot}/opt/percival-detector/odin/
+rm    %{buildroot}/opt/percival-detector/odin/lib/libKafkaProducerPlugin.so
+cp -r ${H5PREFIX}/lib %{buildroot}/opt/percival-detector/odin/
+cp -r ${LOG4CXXPREFIX}/lib %{buildroot}/opt/percival-detector/odin/
+cp -r ${PLUGINSDIR}/lib %{buildroot}/opt/percival-detector/
+
+patchelf --force-rpath --set-rpath "${NEWRPATH}" %{buildroot}/opt/percival-detector/odin/bin/frameProcessor
+patchelf --force-rpath --set-rpath "${NEWRPATH}" %{buildroot}/opt/percival-detector/odin/bin/frameReceiver
+# do I need to set the rpath on these plugins?
+patchelf --force-rpath --set-rpath "${NEWRPATH}" %{buildroot}/opt/percival-detector/lib/libPercivalProcessPlugin.so
+patchelf --force-rpath --set-rpath "${NEWRPATH}" %{buildroot}/opt/percival-detector/lib/libPercivalProcess2Plugin.so
+patchelf --force-rpath --set-rpath "${NEWRPATH}" %{buildroot}/opt/percival-detector/lib/libPercivalProcess3Plugin.so
+patchelf --force-rpath --set-rpath "${NEWRPATH}" %{buildroot}/opt/percival-detector/lib/libPercivalCalibPlugin.so
+patchelf --force-rpath --set-rpath "${NEWRPATH}" %{buildroot}/opt/percival-detector/lib/libPercivalFrameDecoder.so
+
+
+%files
+%defattr(-,root,root,-)
+/opt/percival-detector/lib/libPercivalProcessPlugin.so
+/opt/percival-detector/lib/libPercivalProcess2Plugin.so
+/opt/percival-detector/lib/libPercivalProcess3Plugin.so
+/opt/percival-detector/lib/libPercivalCalibPlugin.so
+/opt/percival-detector/lib/libPercivalFrameDecoder.so
+/opt/percival-detector/odin/bin/frameProcessor
+/opt/percival-detector/odin/bin/frameReceiver
+/opt/percival-detector/odin/lib/*.so
+/opt/percival-detector/odin/lib/*.so.*
+/opt/percival-detector/user_scripts/*
+
