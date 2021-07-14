@@ -40,9 +40,6 @@ namespace FrameProcessor
     void configure(OdinData::IpcMessage &config, OdinData::IpcMessage &reply);
     void status(OdinData::IpcMessage& reply);
 
-    /** Pointer to logger */
-    LoggerPtr logger_;
-
     size_t concurrent_processes_;
     size_t concurrent_rank_;
     CalibratorSample m_calibratorSample;
