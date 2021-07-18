@@ -72,8 +72,7 @@ namespace FrameProcessor
    */
   void PercivalCalibPlugin::configure(OdinData::IpcMessage& config, OdinData::IpcMessage& reply)
   {
-    // Protect this method
-    LOG4CXX_DEBUG(logger_, config.encode());
+    LOG4CXX_DEBUG(logger_, "configure() msg: " << config.encode());
     int64_t rc;
 
     if (config.has_param(CONFIG_CMACOL))
@@ -160,6 +159,20 @@ namespace FrameProcessor
         }
       }
     }
+  }
+
+  void PercivalCalibPlugin::status(OdinData::IpcMessage& status)
+  {
+    LOG4CXX_DEBUG(logger_, "status() called");
+
+    bool cma;
+    int firstCol;
+    m_calibratorSample.getCMA(cma, firstCol);
+    status.set_param(get_name() + "/" + CONFIG_CMACOL, firstCol);
+
+    status.set_param(get_name() + "/" + CONFIG_DARKFRAME, m_loadedDarkFrame);
+
+    status.set_param(get_name() + "/" + CONFIG_CONSTANTSFILE, m_loadedConstants);
   }
 
   bool PercivalCalibPlugin::reset_statistics()

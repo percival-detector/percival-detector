@@ -25,6 +25,12 @@ CalibratorSample::~CalibratorSample()
 
 }
 
+void CalibratorSample::getCMA(bool& on, int& firstCol)
+{
+  on = m_cmaFlag;
+  firstCol = on ? m_cmaFirstCol : -1;
+}
+
 void CalibratorSample::setCMA(bool on, int firstCol)
 {
     int endcol = firstCol + numCMACols;

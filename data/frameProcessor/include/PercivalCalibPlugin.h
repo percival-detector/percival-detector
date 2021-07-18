@@ -28,7 +28,6 @@ namespace FrameProcessor
   public:
     PercivalCalibPlugin();
     virtual ~PercivalCalibPlugin();
-    void configure(OdinData::IpcMessage &config, OdinData::IpcMessage &reply);
     bool reset_statistics();
     int get_version_major();
     int get_version_minor();
@@ -38,6 +37,8 @@ namespace FrameProcessor
 
   private:
     void process_frame(boost::shared_ptr<Frame> frame);
+    void configure(OdinData::IpcMessage &config, OdinData::IpcMessage &reply);
+    void status(OdinData::IpcMessage& reply);
 
     /** Pointer to logger */
     LoggerPtr logger_;
