@@ -168,7 +168,7 @@ namespace FrameProcessor
     md.set_frame_number(hdrPtr->frame_number);
     md.set_frame_offset(frame_base_);
     processInfoField(hdrPtr, md);
-    addFrameNumField(hdrPtr, md);
+ // keep this for debug   addFrameNumField(hdrPtr, md);
     
     md.set_dimensions(p2m_dims);
     md.set_data_type(FrameProcessor::raw_16bit);

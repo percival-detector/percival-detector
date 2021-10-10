@@ -67,11 +67,6 @@
           "datatype": "uint8",
           "dims": [1,42],
           "chunks": [1, 1, 42]
-        },
-        "original_framenum": {
-          "datatype": "uint32",
-          "dims": [1],
-          "chunks": [1, 1]
         }
       },
       "process": {
