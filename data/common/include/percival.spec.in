@@ -5,7 +5,7 @@ Name: percival
 # version is replaced by the build system when it looks at git tags.
 Version: @VERSION_SHORT@
 
-Release: 1
+Release: 2
 
 Summary: Plugins for Odin/Percival.
 

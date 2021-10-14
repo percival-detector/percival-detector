@@ -224,29 +224,33 @@ void* PercivalFrameDecoder::get_next_payload_buffer(void) const
 
 size_t PercivalFrameDecoder::get_next_payload_size(void) const
 {
-    // we must always read the whole datablock to move onto the next packet
-    size_t next_receive_size = get_datablock_size();
-
     if (get_packet_number() < PercivalTransport::num_primary_packets)
-	{
-        if(next_receive_size != PercivalTransport::primary_packet_size)
+	  {
+      // we think it's a primary packet
+        if(get_datablock_size() != PercivalTransport::primary_packet_size)
         {
-            LOG4CXX_ERROR(logger_, "bad packet size:" << next_receive_size);
+            LOG4CXX_ERROR(logger_, "bad packet size:" << get_datablock_size());
         }
-	}
-	else
-	{
-		if(next_receive_size != PercivalTransport::tail_packet_size)
+	  }
+	  else
+	  {
+        // we dont have tail packets any longer; so this is a test for garbage packets
+		    if(true || get_datablock_size() != PercivalTransport::tail_packet_size)
         {
-            LOG4CXX_ERROR(logger_, "bad tail packet size:" << next_receive_size);
+            LOG4CXX_ERROR(logger_, "bad packet thinks it has size:" << get_datablock_size() << " and packet number:" << get_packet_number());
         }
-	}
+	  }
 
-    return next_receive_size;
+    // this is a max size; the recvmsg function stops at the end of a udp packet.
+    return PercivalTransport::primary_packet_size;
 }
 
 FrameDecoder::FrameReceiveState PercivalFrameDecoder::process_packet(size_t bytes_received, int port, struct sockaddr_in* from_addr)
 {
+    if(bytes_received != PercivalTransport::primary_packet_size + PercivalTransport::packet_header_size)
+    {
+        LOG4CXX_ERROR(logger_, "bad packet has actual size:" << bytes_received);
+    }
 
     FrameDecoder::FrameReceiveState frame_state = FrameDecoder::FrameReceiveStateIncomplete;
 
@@ -298,7 +302,7 @@ void PercivalFrameDecoder::monitor_buffers(void)
 
         if (elapsed_ms(frame_header->frame_start_time, current_time) > frame_timeout_ms_)
         {
-            LOG4CXX_DEBUG_LEVEL(1, logger_, "Frame " << frame_num << " in buffer " << buffer_id
+            LOG4CXX_WARN(logger_, "Frame " << frame_num << " in buffer " << buffer_id
                     << " addr 0x" << std::hex << buffer_addr << std::dec
                     << " timed out with " << frame_header->packets_received << " packets received");
 
@@ -306,6 +310,7 @@ void PercivalFrameDecoder::monitor_buffers(void)
             // fill this frame to make it clear it's invalid
             if (get_frame_buffer_size() > get_frame_header_size())
             {
+                LOG4CXX_DEBUG_LEVEL(1, logger_, "clearing entire frame");
                 std::memset((char*)buffer_addr + get_frame_header_size(), 0xff, get_frame_buffer_size() - get_frame_header_size());
             }
             ready_callback_(buffer_id, frame_num);
