@@ -25,6 +25,26 @@ CalibratorSample::~CalibratorSample()
 
 }
 
+void CalibratorSample::getCMA(bool& on, int& firstCol)
+{
+  on = m_cmaFlag;
+  firstCol = on ? m_cmaFirstCol : -1;
+}
+
+void CalibratorSample::setCMA(bool on, int firstCol)
+{
+    int endcol = firstCol + numCMACols;
+    if(0 <= endcol && endcol <= m_cols)
+    {
+        m_cmaFlag = on;
+        m_cmaFirstCol = firstCol;
+    }
+    else
+    {
+        LOG4CXX_ERROR(m_logger, "CMA invalid column, frame has " << m_cols << "cols and you set cma start " << firstCol);
+    }
+}
+
 void CalibratorSample::processFrame(MemBlockI16& input, MemBlockF& output)
 {
     for(int r=0;r<m_rows;++r)
@@ -52,7 +72,6 @@ void CalibratorSample::processFrameRowsTBB(MemBlockI16* pInput, MemBlockF* pOutp
 float CalibratorSample::getCMAVal(MemBlockI16& gainBlock, MemBlockF& output, int row)
 {
     // we calculate an average value across this range subject to the constraint that they are all G0
-    const int numCMACols = 32;
     const int row_start_idx = row * m_cols;
     float total = 0.0f;
     for(int col=m_cmaFirstCol; col < m_cmaFirstCol + numCMACols; ++col)

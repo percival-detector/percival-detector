@@ -1,0 +1,80 @@
+[
+  {
+    "debug_level": 0,
+    "meta_endpoint": "tcp://127.0.0.1:5098",
+    "fr_setup": {
+      "fr_ready_cnxn": "tcp://127.0.0.1:5001",
+      "fr_release_cnxn": "tcp://127.0.0.1:5002"
+    }
+  },
+  {
+    "plugin": {
+      "load": {
+        "index": "hdf",
+        "name": "FileWriterPlugin",
+        "library": "/opt/percival-detector/odin/lib/libHdf5Plugin.so"
+      }
+    }
+  },
+  {
+    "plugin": {
+      "load": {
+        "index": "percival",
+        "name": "PercivalProcess2Plugin",
+        "library": "/opt/percival-detector/lib/libPercivalProcess2Plugin.so"
+      }
+    }
+  },
+  {
+    "plugin": {
+      "connect": {
+        "index": "percival",
+        "connection": "frame_receiver"
+      }
+    }
+  },
+  {
+    "plugin": {
+      "connect": {
+        "index": "hdf",
+        "connection": "percival"
+      }
+    }
+  },
+  {
+    "percival": {
+      "process": {
+        "number": 2,
+        "rank": 1,
+        "block_per_file": 1000
+      }
+    }
+  },
+  {
+    "hdf": {
+      "master" : "data",
+      "dataset": {
+        "data": {
+          "datatype": "uint16",
+          "dims": [1484, 1408],
+          "chunks": [1, 1484, 1408]
+        },
+        "reset": {
+          "datatype": "uint16",
+          "dims": [1484, 1408],
+          "chunks": [1, 1484, 1408]
+        },
+        "info": {
+          "datatype": "uint8",
+          "dims": [1,42],
+          "chunks": [1, 1, 42]
+        }
+      },
+      "process": {
+        "number": 2,
+        "rank": 1,
+        "alignment_value" : 1048576
+      } 
+    }
+  }
+]

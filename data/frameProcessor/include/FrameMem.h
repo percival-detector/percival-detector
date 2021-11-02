@@ -62,6 +62,7 @@ struct FrameMem
     }
 
     // this can load a 2 or 3d dataset. frameNo is only used with 3d datasets.
+    // you can load doubles or uint16 only.
     int64_t loadFromH5(std::string filename, std::string dataset, int frameNo);
 
     void setAll(T val)
@@ -122,6 +123,8 @@ struct FrameMem
     }
     int cols() {return m_cols;}
     int rows() {return m_rows;}
+
+    FrameMem<T>& operator-=(FrameMem<T>& rhs);
 
 private:
     bool m_ownMemory;

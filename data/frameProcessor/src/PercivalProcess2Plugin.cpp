@@ -6,12 +6,13 @@
 
 namespace FrameProcessor
 {
+    static constexpr int64_t UNSET = std::numeric_limits<int64_t>::max();
     const std::string PercivalProcess2Plugin::CONFIG_PROCESS             = "process";
     const std::string PercivalProcess2Plugin::CONFIG_PROCESS_NUMBER      = "number";
     const std::string PercivalProcess2Plugin::CONFIG_PROCESS_RANK        = "rank";
 
     PercivalProcess2Plugin::PercivalProcess2Plugin() :
-    frame_counter_(0),
+    frame_base_(UNSET),
     concurrent_processes_(1),
     concurrent_rank_(0)
   {
@@ -72,7 +73,7 @@ namespace FrameProcessor
   bool PercivalProcess2Plugin::reset_statistics()
   {
     LOG4CXX_INFO(logger_, "PercivalProcess2Plugin reset_statistics called");
-    frame_counter_ = this->concurrent_rank_;
+    frame_base_ = UNSET;
     return true;
   }
 
@@ -124,19 +125,50 @@ namespace FrameProcessor
     this->push(info_frame);
   }
 
+  //! This gets the original-framenum from the buffer header and creates
+  // a data frame for it. Private function, not called by framework.
+  // you should set the frame number in the md before calling the function
+  // @param md a copy of the metadata
+  void PercivalProcess2Plugin::addFrameNumField(const PercivalTransport::FrameHeader* hdrPtr, FrameMetaData md)
+  {
+    dimensions_t fn_dims{1};
+    md.set_dataset_name("original_framenum");
+    md.set_dimensions(fn_dims);
+    md.set_data_type(FrameProcessor::raw_32bit);
+
+    boost::shared_ptr<Frame> fn_frame;
+    fn_frame.reset(new DataBlockFrame(md, 4));
+    char* dest_ptr;
+    const char *src_ptr;
+    dest_ptr = (char *)fn_frame->get_data_ptr();
+    src_ptr = (char const*)&hdrPtr->frame_number;
+    memcpy(dest_ptr, src_ptr, 4);
+
+    LOG4CXX_TRACE(logger_, "Pushing original_framenum frame.");
+    this->push(fn_frame);
+  }
+
   void PercivalProcess2Plugin::process_frame(boost::shared_ptr<Frame> frame)
   {
     LOG4CXX_TRACE(logger_, "Processing raw frame.");
 
     // Read out the frame header from the raw frame
     const PercivalTransport::FrameHeader* hdrPtr = static_cast<const PercivalTransport::FrameHeader*>(frame->get_data_ptr());
-    LOG4CXX_TRACE(logger_, "Raw frame number: " << hdrPtr->frame_number << " offset frame number: " << frame_counter_);
+    if(frame_base_==UNSET)
+    {
+        // we need hdrPtr->frame_number + frame_base_ == concurrent_rank_ for this first frame
+        // see Acquisition::adjust_frame_offset()
+        frame_base_ = (int64_t)concurrent_rank_ - (int64_t)hdrPtr->frame_number;
+        LOG4CXX_INFO(logger_, "first frame after resetst seen, frame_base set to: " << frame_base_);
+    }
 
     dimensions_t p2m_dims(2); p2m_dims[0] = 1484; p2m_dims[1] = 1408;
 
     FrameMetaData md = frame->meta_data();
-    md.set_frame_number(frame_counter_);
+    md.set_frame_number(hdrPtr->frame_number);
+    md.set_frame_offset(frame_base_);
     processInfoField(hdrPtr, md);
+ // keep this for debug   addFrameNumField(hdrPtr, md);
     
     md.set_dimensions(p2m_dims);
     md.set_data_type(FrameProcessor::raw_16bit);
@@ -184,9 +216,6 @@ namespace FrameProcessor
 
     LOG4CXX_TRACE(logger_, "Pushing data frame.");
     this->push(data_frame);
-
-    // Increment local frame counter
-    frame_counter_ += this->concurrent_processes_;
   }
 
 } /* namespace FrameProcessor */

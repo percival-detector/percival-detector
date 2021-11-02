@@ -15,7 +15,6 @@ public:
     MemBlockF m_Gf;
     MemBlockF m_Of;
 
-    // the other member we could have here is numCMACols, but it's always 32.
     int m_rows, m_cols;
 
     // if you set these, you get some info about the calculations at that point.

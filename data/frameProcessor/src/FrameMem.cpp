@@ -143,4 +143,15 @@ int64_t FrameMem<uint16_t>::loadFromH5(std::string filename, std::string dataset
     return rc;
 }
 
+template<class T>
+FrameMem<T>& FrameMem<T>::operator-=(FrameMem<T>& rhs)
+{
+    for(int r=0;r<rows();++r)
+        for(int c=0;c<cols();++c)
+            at(r,c) -= rhs.at(r,c);
 
+    return *this;
+}
+
+// instantiate these classes to get the code generated
+template class FrameMem<float>;

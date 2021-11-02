@@ -1,0 +1,4 @@
+15/7/2021
+This directory contains example-scripts that are packaged with the rpm. They are
+intented to give the user a start-point for running the DAQ. The user should
+copy them to his own directory, alter them, and run them.

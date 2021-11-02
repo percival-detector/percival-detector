@@ -59,7 +59,10 @@ message("-- major:${VERSION_MAJOR} minor:${VERSION_MINOR} patch:${VERSION_PATCH}
 message("-- short version: ${VERSION_SHORT}")
 
 configure_file(${COMMON_DIR}/include/version.h.in "${CMAKE_BINARY_DIR}/include/percival_version.h")
+configure_file(${COMMON_DIR}/include/percival.spec.in "${CMAKE_BINARY_DIR}/include/percival.spec" @ONLY)
 include_directories(${CMAKE_BINARY_DIR}/include)
+
+add_custom_target(rpm-package COMMAND rpmbuild -ba ${CMAKE_BINARY_DIR}/include/percival.spec COMMENT "Building RPM - no dependency checks")
 
 # Add common/include directory to include path
 include_directories(${COMMON_DIR}/include)

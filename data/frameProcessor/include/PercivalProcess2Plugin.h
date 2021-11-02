@@ -53,6 +53,7 @@ namespace FrameProcessor
     static const std::string CONFIG_PROCESS_RANK;
 
     void processInfoField(const PercivalTransport::FrameHeader* hdrPtr, FrameMetaData md);
+    void addFrameNumField(const PercivalTransport::FrameHeader* hdrPtr, FrameMetaData md);
 
     /** Pointer to logger */
     LoggerPtr logger_;
@@ -60,8 +61,10 @@ namespace FrameProcessor
     size_t concurrent_processes_;
     size_t concurrent_rank_;
 
-    /* Frame counter */
-    uint32_t frame_counter_;
+    // this is ~the frame-number of the first frame after a reset
+    // needs to be int64 to hold 32 bits of framenum and 1 bit for negative.
+    // it is int64 in FrameMetaData class
+    int64_t frame_base_;
   };
 
   /**
