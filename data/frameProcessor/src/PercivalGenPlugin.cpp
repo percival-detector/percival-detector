@@ -153,15 +153,26 @@ namespace FrameProcessor
             LOG4CXX_ERROR(logger_, "alignment wrong on reset block " << extra);
         }
 
-        std::this_thread::sleep_for(std::chrono::seconds(10));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
         LOG4CXX_INFO(logger_, "pushing reset frame");
         this->push(resetfr);
 
         md.set_dataset_name("data");
         datafr.reset(new DataBlockFrame(md, sz, imgOffset));
+        uint16_t* ptr2 = static_cast<uint16_t*>(datafr->get_data_ptr());
+        for(int r=0;r<FRAME_ROWS;++r)
+          for(int c=0;c<FRAME_COLS;++c)
+          {
+            uint16_t crs = r * 31 / FRAME_ROWS;
+            uint16_t fn = r * 255 / FRAME_ROWS;
+            uint16_t gn = r * 3 / FRAME_ROWS;
 
-        std::this_thread::sleep_for(std::chrono::seconds(10));
+            ptr2[r*FRAME_COLS + c] = (gn<<13) | (fn<<5) | (crs<<0);
+          }
+
+        LOG4CXX_INFO(logger_, "pushing data frame");
         this->push(datafr);
+        std::this_thread::sleep_for(std::chrono::seconds(1));
      }
   }
 

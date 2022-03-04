@@ -33,16 +33,21 @@ void CalibratorSample::getCMA(bool& on, int& firstCol)
 
 void CalibratorSample::setCMA(bool on, int firstCol)
 {
-    int endcol = firstCol + numCMACols;
-    if(0 <= endcol && endcol <= m_cols)
+    m_cmaFlag = false;
+    if(on)
     {
-        m_cmaFlag = on;
-        m_cmaFirstCol = firstCol;
+      int endCol = firstCol + numCMACols;
+      if(0 <= firstCol && endCol <= m_cols)
+      {
+          m_cmaFlag = on;
+          m_cmaFirstCol = firstCol;
+      }
+      else
+      {
+          LOG4CXX_ERROR(m_logger, "CMA invalid column, frame has " << m_cols << "cols and you set cma start " << firstCol);
+      }
     }
-    else
-    {
-        LOG4CXX_ERROR(m_logger, "CMA invalid column, frame has " << m_cols << "cols and you set cma start " << firstCol);
-    }
+    LOG4CXX_INFO(m_logger, "Setting cma " << (m_cmaFlag?"on":"off"));
 }
 
 void CalibratorSample::processFrame(MemBlockI16& input, MemBlockF& output)
@@ -128,18 +133,20 @@ void CalibratorSample::processFrameRow(MemBlockI16& input, MemBlockF& output, in
           register uint16_t coarse = (pixel & 0x001f);
           input.at(pixel_index) = gain;
 
-          // ADC Correction
+          // ADC Combination; rename CADC
           register float valueADC = idealOf + ( m_Gc.at(pixel_index) * (coarse - m_Oc.at(pixel_index)) )
                                       + ( m_Gf.at(pixel_index) * (fine - m_Of.at(pixel_index)) );
 
-          if(m_debugRow == row)
+          // this is unlikely
+          if(m_debugRow == row && m_debugCol == col)
           {
                 std::stringstream sstr;
-                size_t pixel_index = row * m_cols + m_debugCol;
-                sstr << " at " << row << "," << m_debugCol;
+                size_t pixel_index = row * m_cols + col;
+                sstr << " at " << row << "," << col;
                 sstr << " ADC value:" << valueADC;
                 sstr << " 2-bit Gain value:" << gain;
-                sstr << " Reset pixel:" << m_resetFrame.at(pixel_index);
+                sstr << " 5-bit Crs value:" << coarse;
+              //  sstr << " Reset pixel:" << m_resetFrame.at(pixel_index);
                 if(gain==0)
                 {
                     sstr << " Ped Value:" << m_Ped0.at(pixel_index);
@@ -175,6 +182,7 @@ void CalibratorSample::processFrameRow(MemBlockI16& input, MemBlockF& output, in
               break;
             case 0b11:
               // if we get a lot of these, then we should review the efficiency of this
+              // 3of7 mode sets 0b11 on the unused rows.
               valueADC *= m_Gain3;
               break;
             default:

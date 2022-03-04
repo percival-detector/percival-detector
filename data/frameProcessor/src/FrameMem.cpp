@@ -153,5 +153,26 @@ FrameMem<T>& FrameMem<T>::operator-=(FrameMem<T>& rhs)
     return *this;
 }
 
+template<>
+int64_t FrameMem<float>::saveToH5(std::string filename, std::string dataset)
+{
+    herr_t status;
+
+    const int ndims = 2;
+    hsize_t  	dims[ndims] = {rows(),cols()};
+    hid_t fh = H5Fcreate (filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+
+    hid_t space = H5Screate_simple (ndims, dims, NULL);
+
+    hid_t dset = H5Dcreate (fh, dataset.c_str(), H5T_NATIVE_FLOAT, space, H5P_DEFAULT,
+                H5P_DEFAULT, H5P_DEFAULT);
+
+    status = H5Dwrite (dset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, m_data);
+
+    status = H5Dclose (dset);
+    status = H5Sclose (space);
+    status = H5Fclose (fh);
+}
+
 // instantiate these classes to get the code generated
 template class FrameMem<float>;
