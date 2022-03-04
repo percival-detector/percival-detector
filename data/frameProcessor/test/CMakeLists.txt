@@ -9,7 +9,7 @@ include_directories(${FRAMEPROCESSOR_DIR}/include ${ODINDATA_INCLUDE_DIRS}
 # Build list of test source files from current dir
 file(GLOB TEST_SOURCES *.cpp)
 
-set (CMAKE_CXX_FLAGS "-mavx -w -std=c++11 ${CMAKE_CXX_FLAGS}")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -w -O3")
 
 
 # Add test and project source files to executable
@@ -18,6 +18,9 @@ add_executable(percivalFrameProcessorTest PercivalFrameProcessorTest.cpp)
 add_executable(percivalCalibTest PercivalCalibTests.cpp)
 add_executable(percivalCalibRegressionTest PercivalCalibRTests.cpp)
 add_executable(SimdTest SimdTests.cpp)
+add_executable(meanvar-gen meanvar-gen.cpp)
+
+target_include_directories(meanvar-gen PRIVATE "${HDF5_ROOT}/include")
 
 if ( ${CMAKE_SYSTEM_NAME} MATCHES Linux )
 # librt required for timing functions
@@ -49,5 +52,14 @@ target_link_libraries(percivalCalibRegressionTest
 target_link_libraries(SimdTest
 		${Boost_LIBRARIES}
 )
+
+target_link_libraries(meanvar-gen
+    PercivalCalib
+		${Boost_LIBRARIES}
+)
+
+install(TARGETS meanvar-gen RUNTIME DESTINATION bin)
+
+
 
 

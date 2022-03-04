@@ -15,6 +15,7 @@ namespace PercivalTransport {
     static const size_t tail_packet_size       = 0;
     static const size_t num_tail_packets       = 0;
     static const size_t num_subframes          = 2;
+    // rename to num_frame_types?
     static const size_t num_data_types         = 2;
 
     static const size_t packet_header_size     = 54;

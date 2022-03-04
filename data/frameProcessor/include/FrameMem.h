@@ -64,6 +64,8 @@ struct FrameMem
     // this can load a 2 or 3d dataset. frameNo is only used with 3d datasets.
     // you can load doubles or uint16 only.
     int64_t loadFromH5(std::string filename, std::string dataset, int frameNo);
+    // this is only instantiated for float
+    int64_t saveToH5(std::string filename, std::string dataset);
 
     void setAll(T val)
     {
@@ -96,11 +98,11 @@ struct FrameMem
     T& at(int r, int c)
     {
 #if BOUNDS_CHECK
-        if(r < 0 || rows() <= r)
+        if((r < 0 || rows() <= r))
         {
             LOG4CXX_ERROR(m_logger, "out of bounds: row " << r << " in FrameMem with rows " << rows());
         }
-        if(c < 0 || cols() <= c)
+        if((c < 0 || cols() <= c))
         {
             LOG4CXX_ERROR(m_logger, "out of bounds: col " << c << " in FrameMem with cols " << cols());
         }
@@ -110,7 +112,7 @@ struct FrameMem
     T& at(int idx)
     {
 #if BOUNDS_CHECK
-        if(idx < 0 || m_dataQty <= idx)
+        if((idx < 0 || m_dataQty <= idx))
         {
             LOG4CXX_ERROR(m_logger, "out of bounds at " << idx << " in FrameMem with capacity " << m_dataQty);
         }
