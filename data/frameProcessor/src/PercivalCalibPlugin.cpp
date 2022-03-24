@@ -271,9 +271,12 @@ namespace FrameProcessor
     else if(name=="reset")
     {
         MemBlockI16 in;
+        MemBlockF outtemp;
         in.init(logger_, FRAME_ROWS, FRAME_COLS, frame->get_image_ptr());
-
-        m_calibratorReset.processFrameP(in, m_calibratorSample.m_resetFrame);
+        outtemp.init(logger_, FRAME_ROWS, FRAME_COLS);
+        // temporary disable reset frame until firmware is fixed
+        //m_calibratorReset.processFrameP(in, m_calibratorSample.m_resetFrame);
+        m_calibratorReset.processFrameP(in, outtemp);
         m_resetFrameNumber = frame->meta_data().get_frame_number();
     }
     else
