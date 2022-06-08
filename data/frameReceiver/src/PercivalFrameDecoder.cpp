@@ -152,7 +152,7 @@ void PercivalFrameDecoder::process_packet_header(size_t bytes_received, int port
             {
                 LOG4CXX_ERROR(logger_, "First packet from frame " << current_frame_seen_ << " but no free buffers. Dropping frame.");
                 frames_we_drop_[current_frame_seen_] = DUMMY_BUFFER;
-
+                frames_dropped_ += 1;
             }
     	    else
     	    {
