@@ -16,10 +16,11 @@
 using namespace FrameReceiver;
 
 static const int DUMMY_BUFFER = -10;
+static const int NOFRAME = -1;
 
 PercivalFrameDecoder::PercivalFrameDecoder() :
         FrameDecoderUDP(),
-		current_frame_seen_(-1),
+		current_frame_seen_(NOFRAME),
 		current_frame_buffer_id_(-1),
 		current_frame_buffer_(0),
 		current_frame_header_(0)
@@ -275,7 +276,7 @@ FrameDecoder::FrameReceiveState PercivalFrameDecoder::process_packet(size_t byte
 
 		    // Reset current frame seen ID so that if next frame has same number (e.g. repeated
 		    // sends of single frame 0), it is detected properly
-		    current_frame_seen_ = -1;
+		    current_frame_seen_ = NOFRAME;
 
 	    }
     }
@@ -326,6 +327,8 @@ void PercivalFrameDecoder::monitor_buffers(void)
     if (frames_timedout)
     {
         LOG4CXX_WARN(logger_, "Released " << frames_timedout << " timed out incomplete frames");
+        // we want to zap the cached frame-seen in case it has now gone.
+		    current_frame_seen_ = NOFRAME;
     }
     frames_timedout_ += frames_timedout;
 
