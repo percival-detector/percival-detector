@@ -72,7 +72,7 @@
       "process": {
         "number": 2,
         "rank": 0,
-        "alignment_value" :  1048576
+        "alignment_value" :  4194304
       }
     }
   }
