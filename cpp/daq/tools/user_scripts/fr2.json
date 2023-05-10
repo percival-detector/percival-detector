@@ -2,8 +2,8 @@
 [
   { 
     "max_buffer_mem": 840000000,
-    "frame_ready_endpoint": "tcp://*:5001",
-    "frame_release_endpoint": "tcp://*:5002",
+    "frame_ready_endpoint": "tcp://*:5011",
+    "frame_release_endpoint": "tcp://*:5012",
     "shared_buffer_name": "PercivalFrameBuffer02",
     "rx_address": "196.254.1.9",
     "rx_ports": "8000,8001",

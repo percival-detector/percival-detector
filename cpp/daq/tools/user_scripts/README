@@ -2,3 +2,23 @@
 This directory contains example-scripts that are packaged with the rpm. They are
 intented to give the user a start-point for running the DAQ. The user should
 copy them to his own directory, alter them, and run them.
+
+ports 5000 are used for external clients and gui to connect to the FR1
+ports 5002 / 5001 are used for internal communications between the FR1 and FP1
+port 5004 is used for external clients to connect to the FP1
+
+for FR2/FP2, add 10 to these port numbers.
+
+FR1 receives pixel-data on 196.254.1.8:8000, 8001
+FR2 receives pixel-data on 196.254.1.9:8000, 8001
+
+max_buffer_mem is the number of bytes for the data-buffer between FR and FP.
+8Mb is one frame, and 10 frames is acceptable. If your disc can jam or be slow,
+you can increase this to provide a larger space for queueing pixel-data.
+The shared memory buffer is shown in /dev/shm.
+
+in fpN.json it is important to set "master" : "data", as this tells the
+frameProcessor the last dataset it will get is "data" and so it knows when
+to close a file.
+
+
