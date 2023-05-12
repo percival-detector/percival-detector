@@ -86,6 +86,7 @@ struct FrameMem
         rhs.m_ownMemory = false;
         rhs.m_rows = rhs.m_cols = 0;
         rhs.m_data = nullptr;
+        return *this;
     }
 
 
