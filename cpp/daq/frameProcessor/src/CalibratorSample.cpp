@@ -2,10 +2,13 @@
 #include "CalibratorSample.h"
 #include "SIMDMacros.h"
 
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <iostream>
 #include <sstream>
 
+#if 106000 <= BOOST_VERSION
+using namespace boost::placeholders;
+#endif
 
 // it's probably a bad idea to put this here!
 static const int max_threads = 6;
