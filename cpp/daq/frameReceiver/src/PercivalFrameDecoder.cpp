@@ -20,7 +20,7 @@ static const int NOFRAME = -1;
 
 PercivalFrameDecoder::PercivalFrameDecoder() :
         FrameDecoderUDP(),
-		current_frame_seen_(NOFRAME),
+		current_frame_num_(NOFRAME),
 		current_frame_buffer_id_(-1),
 		current_frame_buffer_(0),
 		current_frame_header_(0)
@@ -125,73 +125,71 @@ void PercivalFrameDecoder::process_packet_header(size_t bytes_received, int port
         LOG4CXX_INFO(packet_logger_, ss.str());
     }
 
-	int frame = static_cast<int>(get_frame_number());
-	uint16_t packet_number = get_packet_number();
-	uint8_t  subframe = get_subframe_number();
-	uint8_t  type = get_packet_type();
+	  int frame = static_cast<int>(get_frame_number());
+	  uint16_t packet_number = get_packet_number();
+	  uint8_t  subframe = get_subframe_number();
+	  uint8_t  type = get_packet_type();
 
     LOG4CXX_DEBUG_LEVEL(3, logger_, "Got packet header:"
             << " type: "     << (int)type << " subframe: " << (int)subframe
             << " packet: "   << packet_number    << " frame: "    << frame
     );
 
-    if (frame != current_frame_seen_)
+    if (frame != current_frame_num_)
     {
-        current_frame_seen_ = frame;
-        bool bNeedInitializeHeader = false;
+      current_frame_num_ = frame;
+      bool bNeedInitializeHeader = false;
 
-    	if (frame_buffer_map_.count(current_frame_seen_) == 0 && frames_we_drop_.count(current_frame_seen_) == 0)
+    	if (frame_buffer_map_.count(current_frame_num_) == 0 && frames_we_drop_.count(current_frame_num_) == 0)
     	{
-            // new frame appears, allocate a buffer for it.
-            if (subframe > 1)
-            {
-                // reference frames have subframe 128, but they are not used any more.
-                LOG4CXX_ERROR(logger_, "First packet from frame " << current_frame_seen_ << " has subframe num " << subframe << ". Dropping frame.");
-                frames_we_drop_[current_frame_seen_] = DUMMY_BUFFER;
-            }
-    	    else if (empty_buffer_queue_.empty())
-            {
-                LOG4CXX_ERROR(logger_, "First packet from frame " << current_frame_seen_ << " but no free buffers. Dropping frame.");
-                frames_we_drop_[current_frame_seen_] = DUMMY_BUFFER;
-                frames_dropped_ += 1;
-            }
-    	    else
-    	    {
-                current_frame_buffer_id_ = empty_buffer_queue_.front();
-                empty_buffer_queue_.pop();
-                frame_buffer_map_[current_frame_seen_] = current_frame_buffer_id_;
+        // new frame appears, allocate a buffer for it.
+        if (subframe > 1)
+        {
+            // reference frames have subframe 128, but they are not used any more.
+            LOG4CXX_ERROR(logger_, "First packet from frame " << current_frame_num_ << " has subframe num " << subframe << ". Dropping frame.");
+            frames_we_drop_[current_frame_num_] = DUMMY_BUFFER;
+        }
+	      else if (empty_buffer_queue_.empty())
+        {
+            LOG4CXX_ERROR(logger_, "First packet from frame " << current_frame_num_ << " but no free buffers. Dropping frame.");
+            frames_we_drop_[current_frame_num_] = DUMMY_BUFFER;
+            frames_dropped_ += 1;
+        }
+	      else
+	      {
+            current_frame_buffer_id_ = empty_buffer_queue_.front();
+            empty_buffer_queue_.pop();
+            frame_buffer_map_[current_frame_num_] = current_frame_buffer_id_;
 
-                LOG4CXX_DEBUG_LEVEL(2, logger_, "First packet from frame " << current_frame_seen_ << " detected, allocating frame buffer ID " << current_frame_buffer_id_);
-
-    	    }
-            bNeedInitializeHeader = true;
-
+            LOG4CXX_DEBUG_LEVEL(2, logger_, "First packet from frame " << current_frame_num_ << " detected, allocating frame buffer ID " << current_frame_buffer_id_);
+	      }
+        bNeedInitializeHeader = true;
     	}
 
         // select the right buffer for this frame
-    	if(frame_buffer_map_.count(current_frame_seen_))
+    	if(frame_buffer_map_.count(current_frame_num_))
     	{
-    		current_frame_buffer_id_ = frame_buffer_map_[current_frame_seen_];
+    		current_frame_buffer_id_ = frame_buffer_map_[current_frame_num_];
         	current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
     	}
-        else if(frames_we_drop_.count(current_frame_seen_))
-        {
-            current_frame_buffer_id_ = DUMMY_BUFFER;
-            current_frame_buffer_ = dropped_frame_buffer_.get();
-        }
-        current_frame_header_ = reinterpret_cast<PercivalTransport::FrameHeader*>(current_frame_buffer_);
+      else if(frames_we_drop_.count(current_frame_num_))
+      {
+          current_frame_buffer_id_ = DUMMY_BUFFER;
+          current_frame_buffer_ = dropped_frame_buffer_.get();
+      }
+      current_frame_header_ = reinterpret_cast<PercivalTransport::FrameHeader*>(current_frame_buffer_);
 
-        // initialize the header if it's a new one
-        if(bNeedInitializeHeader)
-        {
-   	        // Initialise frame header
-            current_frame_header_->frame_number = current_frame_seen_;
-            current_frame_header_->frame_state = FrameDecoder::FrameReceiveStateIncomplete;
-            current_frame_header_->packets_received = 0;
-            memset(current_frame_header_->packet_state, 0, PercivalTransport::num_frame_packets);
-            memcpy(current_frame_header_->frame_info, get_frame_info(), PercivalTransport::frame_info_size);
-            gettime(reinterpret_cast<struct timespec*>(&(current_frame_header_->frame_start_time)));
-        }
+      // initialize the header if it's a new one
+      if(bNeedInitializeHeader)
+      {
+ 	        // Initialise frame header
+          current_frame_header_->frame_number = current_frame_num_;
+          current_frame_header_->frame_state = FrameDecoder::FrameReceiveStateIncomplete;
+          current_frame_header_->packets_received = 0;
+          memset(current_frame_header_->packet_state, 0, PercivalTransport::num_frame_packets);
+          memcpy(current_frame_header_->frame_info, get_frame_info(), PercivalTransport::frame_info_size);
+          gettime(reinterpret_cast<struct timespec*>(&(current_frame_header_->frame_start_time)));
+      }
     }
 
     // Update packet_number state map in frame header
@@ -199,19 +197,25 @@ void PercivalFrameDecoder::process_packet_header(size_t bytes_received, int port
 
 }
 
+inline uint32_t PercivalFrameDecoder::get_packet_offset_in_frame(uint8_t type, uint8_t subframe, uint16_t packet) const
+{
+    return get_frame_header_size() +
+    (PercivalTransport::data_type_size * type) +
+    (PercivalTransport::subframe_size * subframe) +
+    (PercivalTransport::primary_packet_size * packet);
+}
+
 void* PercivalFrameDecoder::get_next_payload_buffer(void) const
 {
-
     uint8_t* next_receive_location;
 
     next_receive_location =
         reinterpret_cast<uint8_t*>(current_frame_buffer_) +
-        get_frame_header_size() +
-        (PercivalTransport::data_type_size * get_packet_type()) +
-        (PercivalTransport::subframe_size * get_subframe_number()) +
-        (PercivalTransport::primary_packet_size * get_packet_number());
+        get_packet_offset_in_frame(get_packet_type(), get_subframe_number(), get_packet_number());
 
 #if DOIT2
+// this is a different arrangement of the data in the frame, and saves us
+// needing to do so much in the FP.
         next_receive_location =
             reinterpret_cast<uint8_t*>(current_frame_buffer_) +
             get_frame_header_size() +
@@ -242,7 +246,7 @@ size_t PercivalFrameDecoder::get_next_payload_size(void) const
         }
 	  }
 
-    // this is a max size; the recvmsg function stops at the end of a udp packet.
+    // the recvmsg function stops at the end of a udp packet, so this may be seen as a maximum buffer size.
     return PercivalTransport::primary_packet_size;
 }
 
@@ -257,11 +261,10 @@ FrameDecoder::FrameReceiveState PercivalFrameDecoder::process_packet(size_t byte
 
     if(current_frame_buffer_id_ != DUMMY_BUFFER)
     {
-        current_frame_header_->packets_received++;
+      current_frame_header_->packets_received++;
 
 	    if (current_frame_header_->packets_received == PercivalTransport::num_frame_packets)
 	    {
-
 	        // Set frame state accordingly
 		    frame_state = FrameDecoder::FrameReceiveStateComplete;
 
@@ -269,15 +272,14 @@ FrameDecoder::FrameReceiveState PercivalFrameDecoder::process_packet(size_t byte
 		    current_frame_header_->frame_state = frame_state;
 
 		    // Erase frame from buffer map
-		    frame_buffer_map_.erase(current_frame_seen_);
+		    frame_buffer_map_.erase(current_frame_num_);
 
 		    // Notify main thread that frame is ready
-		    ready_callback_(current_frame_buffer_id_, current_frame_seen_);
+		    ready_callback_(current_frame_buffer_id_, current_frame_num_);
 
 		    // Reset current frame seen ID so that if next frame has same number (e.g. repeated
 		    // sends of single frame 0), it is detected properly
-		    current_frame_seen_ = NOFRAME;
-
+		    current_frame_num_ = NOFRAME;
 	    }
     }
 
@@ -286,7 +288,6 @@ FrameDecoder::FrameReceiveState PercivalFrameDecoder::process_packet(size_t byte
 
 void PercivalFrameDecoder::monitor_buffers(void)
 {
-
     int frames_timedout = 0;
     struct timespec current_time;
 
@@ -300,20 +301,37 @@ void PercivalFrameDecoder::monitor_buffers(void)
         int      buffer_id = buffer_map_iter->second;
         void*    buffer_addr = buffer_manager_->get_buffer_address(buffer_id);
         PercivalTransport::FrameHeader* frame_header = reinterpret_cast<PercivalTransport::FrameHeader*>(buffer_addr);
-
-        if (elapsed_ms(frame_header->frame_start_time, current_time) > frame_timeout_ms_)
+        unsigned int elapse_ms = this->elapsed_ms(frame_header->frame_start_time, current_time);
+        if (elapse_ms > frame_timeout_ms_)
         {
             LOG4CXX_WARN(logger_, "Frame " << frame_num << " in buffer " << buffer_id
-                    << " addr 0x" << std::hex << buffer_addr << std::dec
-                    << " timed out with " << frame_header->packets_received << " packets received");
+                    << " timed out after " << elapse_ms << "ms"
+                    << " with " << frame_header->packets_received << " packets received");
 
             frame_header->frame_state = FrameReceiveStateTimedout;
-            // fill this frame to make it clear it's invalid
-            if (get_frame_buffer_size() > get_frame_header_size())
+            // we blank areas of the frame to make it clear they contain invalid data
+            for(int type=0;type<PercivalTransport::num_data_types;++type)
             {
-                LOG4CXX_DEBUG_LEVEL(1, logger_, "clearing entire frame");
-                std::memset((char*)buffer_addr + get_frame_header_size(), 0xff, get_frame_buffer_size() - get_frame_header_size());
+              for(int subframe=0;subframe<PercivalTransport::num_subframes;++subframe)
+              {
+                int missing_packet_count = 0;
+                for(int packetid=0;packetid<PercivalTransport::num_primary_packets;++packetid)
+                {
+                  // check for specific packets missing
+                  if(current_frame_header_->packet_state[type][subframe][packetid]==0)
+                  {
+                    // blank the memory with 0xff which can not be created by the detector
+                    uint8_t* packet_location = reinterpret_cast<uint8_t*>(buffer_addr) +
+                      get_packet_offset_in_frame(type, subframe, packetid);
+                    memset(packet_location, 0xff, PercivalTransport::primary_packet_size);
+                    // we could log individual packets here, but it would be slow
+                    ++missing_packet_count;
+                  }
+                }
+                LOG4CXX_WARN(logger_, "type " << type << " subframe " << subframe << " num packets missing " << missing_packet_count);
+              }
             }
+
             ready_callback_(buffer_id, frame_num);
             frames_timedout++;
 
@@ -328,7 +346,7 @@ void PercivalFrameDecoder::monitor_buffers(void)
     {
         LOG4CXX_WARN(logger_, "Released " << frames_timedout << " timed out incomplete frames");
         // we want to zap the cached frame-seen in case it has now gone.
-		    current_frame_seen_ = NOFRAME;
+		    current_frame_num_ = NOFRAME;
     }
     frames_timedout_ += frames_timedout;
 

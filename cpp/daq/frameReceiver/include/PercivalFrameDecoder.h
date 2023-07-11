@@ -57,14 +57,14 @@ namespace FrameReceiver
         uint8_t* get_frame_info(void) const;
 
     private:
-
+        uint32_t get_packet_offset_in_frame(uint8_t type, uint8_t subframe, uint16_t packet) const;
         uint8_t* raw_packet_header(void) const;
         unsigned int elapsed_ms(struct timespec& start, struct timespec& end);
 
         boost::shared_ptr<void> current_packet_header_;
         boost::shared_ptr<void> dropped_frame_buffer_;
 
-        int current_frame_seen_;
+        int current_frame_num_;
         int current_frame_buffer_id_;
         void* current_frame_buffer_;
         PercivalTransport::FrameHeader* current_frame_header_;
