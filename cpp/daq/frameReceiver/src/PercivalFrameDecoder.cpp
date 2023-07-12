@@ -129,11 +129,29 @@ void PercivalFrameDecoder::process_packet_header(size_t bytes_received, int port
 	  uint16_t packet_number = get_packet_number();
 	  uint8_t  subframe = get_subframe_number();
 	  uint8_t  type = get_packet_type();
+    uint16_t datablock_size = get_datablock_size();
 
     LOG4CXX_DEBUG_LEVEL(3, logger_, "Got packet header:"
             << " type: "     << (int)type << " subframe: " << (int)subframe
             << " packet: "   << packet_number    << " frame: "    << frame
     );
+
+    // check the header-info for bad parameters
+    if (packet_number < PercivalTransport::num_primary_packets)
+	  {
+      // we think it's a primary packet
+        if(datablock_size != PercivalTransport::primary_packet_size)
+        {
+            LOG4CXX_ERROR(logger_, "bad packet num " << packet_number << " claims to have size " << get_datablock_size());
+            ++bad_packets_seen_;
+        }
+	  }
+    else
+    {
+        LOG4CXX_ERROR(logger_, "bad packet thinks it has size:" << get_datablock_size() << " and packet number:" << get_packet_number());
+        ++bad_packets_seen_;
+    }
+
 
     if (frame != current_frame_num_)
     {
@@ -229,23 +247,6 @@ void* PercivalFrameDecoder::get_next_payload_buffer(void) const
 
 size_t PercivalFrameDecoder::get_next_payload_size(void) const
 {
-    if (get_packet_number() < PercivalTransport::num_primary_packets)
-	  {
-      // we think it's a primary packet
-        if(get_datablock_size() != PercivalTransport::primary_packet_size)
-        {
-            LOG4CXX_ERROR(logger_, "bad packet size:" << get_datablock_size());
-        }
-	  }
-	  else
-	  {
-        // we dont have tail packets any longer; so this is a test for garbage packets
-		    if(true || get_datablock_size() != PercivalTransport::tail_packet_size)
-        {
-            LOG4CXX_ERROR(logger_, "bad packet thinks it has size:" << get_datablock_size() << " and packet number:" << get_packet_number());
-        }
-	  }
-
     // the recvmsg function stops at the end of a udp packet, so this may be seen as a maximum buffer size.
     return PercivalTransport::primary_packet_size;
 }
@@ -254,7 +255,8 @@ FrameDecoder::FrameReceiveState PercivalFrameDecoder::process_packet(size_t byte
 {
     if(bytes_received != PercivalTransport::primary_packet_size + PercivalTransport::packet_header_size)
     {
-        LOG4CXX_ERROR(logger_, "bad packet has actual size:" << bytes_received);
+        ++bad_packets_seen_;
+        LOG4CXX_ERROR(logger_, "bad packet has actual size:" << bytes_received << " and claims to have db-size " << get_datablock_size());
     }
 
     FrameDecoder::FrameReceiveState frame_state = FrameDecoder::FrameReceiveStateIncomplete;
@@ -363,7 +365,7 @@ void PercivalFrameDecoder::monitor_buffers(void)
 
 void PercivalFrameDecoder::get_status(const std::string param_prefix, OdinData::IpcMessage& status_msg)
 {
-
+  status_msg.set_param(param_prefix + "bad_packets", this->bad_packets_seen_);
 }
 
 uint16_t PercivalFrameDecoder::get_datablock_size(void) const
@@ -423,5 +425,7 @@ inline unsigned int PercivalFrameDecoder::elapsed_ms(struct timespec& start, str
 void PercivalFrameDecoder::reset_statistics(void)
 {
     frames_we_drop_.clear();
+    bad_packets_seen_ = 0;
+    
     FrameDecoderUDP::reset_statistics();
 }

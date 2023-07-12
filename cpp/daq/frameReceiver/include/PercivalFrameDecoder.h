@@ -64,6 +64,7 @@ namespace FrameReceiver
         boost::shared_ptr<void> current_packet_header_;
         boost::shared_ptr<void> dropped_frame_buffer_;
 
+        int bad_packets_seen_;
         int current_frame_num_;
         int current_frame_buffer_id_;
         void* current_frame_buffer_;
