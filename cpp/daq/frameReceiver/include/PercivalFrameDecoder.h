@@ -68,6 +68,10 @@ namespace FrameReceiver
         int current_frame_num_;
         int current_frame_buffer_id_;
         void* current_frame_buffer_;
+        //! this function checks all the packet parameters like datablock size are within the bounds we expect.
+        //! It was added when we saw strange packets with the wrong packet numbers appearing.
+        //! It has the side-effect of recording the packet arrival in the frame buffer.
+        bool current_packet_valid(size_t bytes_received);
         PercivalTransport::FrameHeader* current_frame_header_;
 
         std::map<int,int> frames_we_drop_;

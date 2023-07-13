@@ -23,7 +23,8 @@ PercivalFrameDecoder::PercivalFrameDecoder() :
 		current_frame_num_(NOFRAME),
 		current_frame_buffer_id_(-1),
 		current_frame_buffer_(0),
-		current_frame_header_(0)
+		current_frame_header_(0),
+    bad_packets_seen_(0)
 {
     current_packet_header_.reset(new uint8_t[sizeof(PercivalTransport::PacketHeader)]);
     dropped_frame_buffer_.reset(new uint8_t[PercivalTransport::total_frame_size]);
@@ -136,23 +137,6 @@ void PercivalFrameDecoder::process_packet_header(size_t bytes_received, int port
             << " packet: "   << packet_number    << " frame: "    << frame
     );
 
-    // check the header-info for bad parameters
-    if (packet_number < PercivalTransport::num_primary_packets)
-	  {
-      // we think it's a primary packet
-        if(datablock_size != PercivalTransport::primary_packet_size)
-        {
-            LOG4CXX_ERROR(logger_, "bad packet num " << packet_number << " claims to have size " << get_datablock_size());
-            ++bad_packets_seen_;
-        }
-	  }
-    else
-    {
-        LOG4CXX_ERROR(logger_, "bad packet thinks it has size:" << get_datablock_size() << " and packet number:" << get_packet_number());
-        ++bad_packets_seen_;
-    }
-
-
     if (frame != current_frame_num_)
     {
       current_frame_num_ = frame;
@@ -161,13 +145,7 @@ void PercivalFrameDecoder::process_packet_header(size_t bytes_received, int port
     	if (frame_buffer_map_.count(current_frame_num_) == 0 && frames_we_drop_.count(current_frame_num_) == 0)
     	{
         // new frame appears, allocate a buffer for it.
-        if (subframe > 1)
-        {
-            // reference frames have subframe 128, but they are not used any more.
-            LOG4CXX_ERROR(logger_, "First packet from frame " << current_frame_num_ << " has subframe num " << subframe << ". Dropping frame.");
-            frames_we_drop_[current_frame_num_] = DUMMY_BUFFER;
-        }
-	      else if (empty_buffer_queue_.empty())
+        if (empty_buffer_queue_.empty())
         {
             LOG4CXX_ERROR(logger_, "First packet from frame " << current_frame_num_ << " but no free buffers. Dropping frame.");
             frames_we_drop_[current_frame_num_] = DUMMY_BUFFER;
@@ -188,7 +166,7 @@ void PercivalFrameDecoder::process_packet_header(size_t bytes_received, int port
     	if(frame_buffer_map_.count(current_frame_num_))
     	{
     		current_frame_buffer_id_ = frame_buffer_map_[current_frame_num_];
-        	current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
+        current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
     	}
       else if(frames_we_drop_.count(current_frame_num_))
       {
@@ -209,10 +187,6 @@ void PercivalFrameDecoder::process_packet_header(size_t bytes_received, int port
           gettime(reinterpret_cast<struct timespec*>(&(current_frame_header_->frame_start_time)));
       }
     }
-
-    // Update packet_number state map in frame header
-    current_frame_header_->packet_state[type][subframe][packet_number] = 1;
-
 }
 
 inline uint32_t PercivalFrameDecoder::get_packet_offset_in_frame(uint8_t type, uint8_t subframe, uint16_t packet) const
@@ -253,15 +227,13 @@ size_t PercivalFrameDecoder::get_next_payload_size(void) const
 
 FrameDecoder::FrameReceiveState PercivalFrameDecoder::process_packet(size_t bytes_received, int port, struct sockaddr_in* from_addr)
 {
-    if(bytes_received != PercivalTransport::primary_packet_size + PercivalTransport::packet_header_size)
-    {
-        ++bad_packets_seen_;
-        LOG4CXX_ERROR(logger_, "bad packet has actual size:" << bytes_received << " and claims to have db-size " << get_datablock_size());
-    }
-
     FrameDecoder::FrameReceiveState frame_state = FrameDecoder::FrameReceiveStateIncomplete;
-
-    if(current_frame_buffer_id_ != DUMMY_BUFFER)
+    if(current_packet_valid(bytes_received) == false)
+    {
+      ++bad_packets_seen_;
+    }
+    // we must check the current frame buffer is valid or we could release the dummy buffer to the FP!
+    else if(current_frame_buffer_id_ != DUMMY_BUFFER)
     {
       current_frame_header_->packets_received++;
 
@@ -330,7 +302,7 @@ void PercivalFrameDecoder::monitor_buffers(void)
                     ++missing_packet_count;
                   }
                 }
-                LOG4CXX_WARN(logger_, "type " << type << " subframe " << subframe << " num packets missing " << missing_packet_count);
+                LOG4CXX_DEBUG(logger_, "type " << type << " subframe " << subframe << " num packets missing " << missing_packet_count);
               }
             }
 
@@ -401,13 +373,12 @@ uint16_t PercivalFrameDecoder::get_packet_offset(void) const
     return *(reinterpret_cast<uint16_t*>(raw_packet_header()+PercivalTransport::packet_offset_offset));
 }
 
-uint8_t* PercivalFrameDecoder::get_frame_info(void) const
+inline uint8_t* PercivalFrameDecoder::get_frame_info(void) const
 {
     return (reinterpret_cast<uint8_t*>(raw_packet_header()+PercivalTransport::frame_info_offset));
 }
 
-// remove this
-uint8_t* PercivalFrameDecoder::raw_packet_header(void) const
+inline uint8_t* PercivalFrameDecoder::raw_packet_header(void) const
 {
     return reinterpret_cast<uint8_t*>(current_packet_header_.get());
 }
@@ -429,3 +400,74 @@ void PercivalFrameDecoder::reset_statistics(void)
     
     FrameDecoderUDP::reset_statistics();
 }
+
+inline bool PercivalFrameDecoder::current_packet_valid(size_t bytes_received)
+{
+  bool valid = true;
+  uint32_t frame_num = get_frame_number();
+  uint16_t packet_number = get_packet_number();
+  // these are uint8_ts but for printing we make them ints
+  int  subframe = get_subframe_number();
+  int  type = get_packet_type();
+  uint16_t datablock_size = get_datablock_size();
+
+  // check the header-info for bad parameters
+
+  if(__builtin_expect(bytes_received != PercivalTransport::primary_packet_size + PercivalTransport::packet_header_size, false))
+  {
+      LOG4CXX_ERROR(logger_, "bad packet has actual size:" << bytes_received << " and claims to have db-size " << get_datablock_size());
+      valid = false;
+  }
+
+  if(__builtin_expect(datablock_size != PercivalTransport::primary_packet_size, false))
+  {
+      LOG4CXX_ERROR(logger_, "Packet num " << packet_number << " claims to have size " << get_datablock_size());
+      valid = false;
+  }
+
+  if(__builtin_expect(type >= PercivalTransport::num_data_types, false))
+  {
+      LOG4CXX_ERROR(logger_, "Packet num " << packet_number << " claims to have type " << type);
+      valid = false;
+  }
+
+  if(__builtin_expect(subframe >= PercivalTransport::num_subframes, false))
+  {
+      // reference frames have subframe 128, but they are not used any more.
+      LOG4CXX_ERROR(logger_, "Packet num " << packet_number << " claims to have subframe " << subframe);
+      valid = false;
+  }
+
+  if(frame_num)
+  {
+    // this may be done later
+    // we could keep a map of frame_num to num_frames_released to see if we get duplicate packets for a frame.
+  }
+
+  if (__builtin_expect(packet_number >= PercivalTransport::num_primary_packets, false))
+  {
+      LOG4CXX_ERROR(logger_, "Packet claims to have packet_number " << packet_number);
+      valid = false;
+  }
+
+  if(valid && __builtin_expect(current_frame_header_->packet_state[type][subframe][packet_number], false))
+  {
+      LOG4CXX_ERROR(logger_, "Packet type " << type << " subframe " << subframe << " packet " << packet_number << " has already been seen");
+      valid = false;
+  }
+
+  if(__builtin_expect(valid, true))
+  {
+      current_frame_header_->packet_state[type][subframe][packet_number] = 1;
+  }
+  else
+  {
+    // this is really just a separator to distinguish the packets in the logfile.
+      LOG4CXX_WARN(logger_, "BAD PACKET REJECTED");
+  }
+
+
+
+  return valid;
+}
+
