@@ -248,8 +248,9 @@ FrameDecoder::FrameReceiveState PercivalFrameDecoder::process_packet(size_t byte
 		    // Erase frame from buffer map
 		    frame_buffer_map_.erase(current_frame_num_);
 
-		    // Notify main thread that frame is ready
-		    ready_callback_(current_frame_buffer_id_, current_frame_num_);
+        // Notify main thread that frame is ready
+        ready_callback_(current_frame_buffer_id_, current_frame_num_);
+        LOG4CXX_INFO(logger_, "Frame " << current_frame_num_ << " in buffer " << current_frame_buffer_id_ << " released ok");
 
 		    // Reset current frame seen ID so that if next frame has same number (e.g. repeated
 		    // sends of single frame 0), it is detected properly
