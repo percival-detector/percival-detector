@@ -9,14 +9,15 @@
 
 namespace PercivalTransport {
 
-    // rename this because it's the datablock size
-    static const size_t primary_packet_size    = 4928;
+    // there are four packets to a row-group which is 7 rows
+    static const size_t packet_pixeldata_size  = 4928;
     static const size_t num_primary_packets    = 424;
     static const size_t tail_packet_size       = 0;
     static const size_t num_tail_packets       = 0;
     static const size_t num_subframes          = 2;
-    // rename to num_frame_types?
+
     static const size_t num_data_types         = 2;
+    static const uint8_t data_type_reset       = 0;
 
     static const size_t packet_header_size     = 54;
     static const size_t datablock_size_offset  = 0;
@@ -29,13 +30,8 @@ namespace PercivalTransport {
 
     static const size_t frame_info_size        = 42;
 
-
-    typedef struct
-    {
-        uint8_t raw[packet_header_size];
-    } PacketHeader;
-
     // this is what appears at the start of a UDP payload from the detector
+    // warning: these fields are big-endian on the network, so this struct is unhelpful.
     struct PacketHeaderFields
     {
         // this is the size of what appears after the header.
@@ -48,13 +44,10 @@ namespace PercivalTransport {
         uint8_t m_frame_info[frame_info_size];
     }  __attribute__ ((packed));
 
-    typedef enum
-    {
-        PacketTypeSample = 0,
-        PacketTypeReset  = 1,
-    } PacketType;
+    static_assert(sizeof(PacketHeaderFields)==packet_header_size, "PacketHeaderFields is malformed");
 
     // this is what appears at the start of a shared-mem buffer that arrives at the FP.
+    // these fields are little-endian on an intel processor.
     typedef struct
     {
         uint32_t frame_number;
@@ -65,7 +58,7 @@ namespace PercivalTransport {
         uint8_t  packet_state[num_data_types][num_subframes][num_primary_packets + num_tail_packets];
     } FrameHeader;
 
-    static const size_t subframe_size       = (num_primary_packets * primary_packet_size)
+    static const size_t subframe_size       = (num_primary_packets * packet_pixeldata_size)
                                             + (num_tail_packets * tail_packet_size);
     static const size_t data_type_size      = subframe_size * num_subframes;
     static const size_t total_frame_size    = (data_type_size * num_data_types) + sizeof(FrameHeader);

@@ -26,7 +26,7 @@ PercivalFrameDecoder::PercivalFrameDecoder() :
 		current_frame_header_(0),
     bad_packets_seen_(0)
 {
-    current_packet_header_.reset(new uint8_t[sizeof(PercivalTransport::PacketHeader)]);
+    current_packet_header_.reset(new uint8_t[PercivalTransport::packet_header_size]);
     dropped_frame_buffer_.reset(new uint8_t[PercivalTransport::total_frame_size]);
 }
 
@@ -94,7 +94,7 @@ const size_t PercivalFrameDecoder::get_frame_header_size(void) const
 
 const size_t PercivalFrameDecoder::get_packet_header_size(void) const
 {
-    return sizeof(PercivalTransport::PacketHeader);
+    return PercivalTransport::packet_header_size;
 }
 
 void* PercivalFrameDecoder::get_packet_header_buffer(void)
@@ -114,7 +114,7 @@ void PercivalFrameDecoder::process_packet_header(size_t bytes_received, int port
         ss << "PktHdr: " << std::setw(15) << std::left << inet_ntoa(from_addr->sin_addr) << std::right << " "
            << std::setw(5) << ntohs(from_addr->sin_port) << " "
            << std::setw(5) << port << std::hex;
-        for (unsigned int hdr_byte = 0; hdr_byte < sizeof(PercivalTransport::PacketHeader); hdr_byte++)
+        for (unsigned int hdr_byte = 0; hdr_byte < PercivalTransport::packet_header_size; hdr_byte++)
         {
             if (hdr_byte % 8 == 0) {
                 ss << "  ";
@@ -194,7 +194,7 @@ inline uint32_t PercivalFrameDecoder::get_packet_offset_in_frame(uint8_t type, u
     return get_frame_header_size() +
     (PercivalTransport::data_type_size * type) +
     (PercivalTransport::subframe_size * subframe) +
-    (PercivalTransport::primary_packet_size * packet);
+    (PercivalTransport::packet_pixeldata_size * packet);
 }
 
 void* PercivalFrameDecoder::get_next_payload_buffer(void) const
@@ -212,7 +212,7 @@ void* PercivalFrameDecoder::get_next_payload_buffer(void) const
             reinterpret_cast<uint8_t*>(current_frame_buffer_) +
             get_frame_header_size() +
             (PercivalTransport::data_type_size * get_packet_type()) +
-            PercivalTransport::primary_packet_size * 
+            PercivalTransport::packet_pixeldata_size * 
             (2*get_packet_number() + get_subframe_number());
 #endif
     
@@ -222,7 +222,7 @@ void* PercivalFrameDecoder::get_next_payload_buffer(void) const
 size_t PercivalFrameDecoder::get_next_payload_size(void) const
 {
     // the recvmsg function stops at the end of a udp packet, so this may be seen as a maximum buffer size.
-    return PercivalTransport::primary_packet_size;
+    return PercivalTransport::packet_pixeldata_size;
 }
 
 FrameDecoder::FrameReceiveState PercivalFrameDecoder::process_packet(size_t bytes_received, int port, struct sockaddr_in* from_addr)
@@ -297,7 +297,7 @@ void PercivalFrameDecoder::monitor_buffers(void)
                     // blank the memory with 0xff which can not be created by the detector
                     uint8_t* packet_location = reinterpret_cast<uint8_t*>(buffer_addr) +
                       get_packet_offset_in_frame(type, subframe, packetid);
-                    memset(packet_location, 0xff, PercivalTransport::primary_packet_size);
+                    memset(packet_location, 0xff, PercivalTransport::packet_pixeldata_size);
                     // we could log individual packets here, but it would be slow
                     ++missing_packet_count;
                   }
@@ -413,13 +413,13 @@ inline bool PercivalFrameDecoder::current_packet_valid(size_t bytes_received)
 
   // check the header-info for bad parameters
 
-  if(__builtin_expect(bytes_received != PercivalTransport::primary_packet_size + PercivalTransport::packet_header_size, false))
+  if(__builtin_expect(bytes_received != PercivalTransport::packet_pixeldata_size + PercivalTransport::packet_header_size, false))
   {
       LOG4CXX_ERROR(logger_, "bad packet has actual size:" << bytes_received << " and claims to have db-size " << get_datablock_size());
       valid = false;
   }
 
-  if(__builtin_expect(datablock_size != PercivalTransport::primary_packet_size, false))
+  if(__builtin_expect(datablock_size != PercivalTransport::packet_pixeldata_size, false))
   {
       LOG4CXX_ERROR(logger_, "Packet num " << packet_number << " claims to have size " << get_datablock_size());
       valid = false;
