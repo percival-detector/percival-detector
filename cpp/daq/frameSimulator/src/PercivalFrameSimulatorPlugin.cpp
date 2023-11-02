@@ -75,7 +75,7 @@ namespace FrameSimulator {
     void PercivalFrameSimulatorPlugin::extract_frames(const u_char *indata, const int &size)
     {
         LOG4CXX_DEBUG_LEVEL(4, logger_, "Copying packet #" << m_numPacketsFromPcap);
-        const int idealSize = PercivalTransport::primary_packet_size + PercivalTransport::packet_header_size;
+        const int idealSize = PercivalTransport::packet_pixeldata_size + PercivalTransport::packet_header_size;
         LOG4CXX_ASSERT(logger_, (idealSize == size), "packet " << m_numPacketsFromPcap << " in pcap file is the wrong size");
 
         if(PercivalTransport::packet_header_size <= size)
@@ -121,7 +121,7 @@ namespace FrameSimulator {
     {
         m_numFramesToCreate = num_frames;
         LOG4CXX_DEBUG(logger_, "Creating frame(s) " << m_numFramesToCreate);
-        const int size = PercivalTransport::primary_packet_size + PercivalTransport::packet_header_size;
+        const int size = PercivalTransport::packet_pixeldata_size + PercivalTransport::packet_header_size;
 
         for(int fr=0;fr<m_numFramesToCreate;++fr)
         {
@@ -145,7 +145,7 @@ namespace FrameSimulator {
                         PercivalTransport::PacketHeaderFields* pHeader = 
                             static_cast<PercivalTransport::PacketHeaderFields*>(buf);
 
-                        pHeader->m_datablock_size = htons(PercivalTransport::primary_packet_size);
+                        pHeader->m_datablock_size = htons(PercivalTransport::packet_pixeldata_size);
                         pHeader->m_packet_type = pt;
                         pHeader->m_subframe_number = sf;
                         pHeader->m_frame_number = htonl(fr+1e7);
@@ -153,7 +153,7 @@ namespace FrameSimulator {
                         memset(pHeader->m_frame_info, 0x98, PercivalTransport::frame_info_size);
 
                         uint16_t* pixels = static_cast<uint16_t*>(buf)+PercivalTransport::packet_header_size/2;
-                        for(int pix=0;pix<PercivalTransport::primary_packet_size/2;++pix)
+                        for(int pix=0;pix<PercivalTransport::packet_pixeldata_size/2;++pix)
                         {
                             if(m_packetFillMode == ePacketId)
                             {
