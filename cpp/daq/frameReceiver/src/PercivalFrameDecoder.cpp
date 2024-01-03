@@ -17,6 +17,9 @@ using namespace FrameReceiver;
 
 static const int DUMMY_BUFFER = -10;
 static const int NOFRAME = -1;
+// normally on, the FR will blank the entire frame if it notices missing packets;
+// if frame_blanking is off, it only blanks the missing portion of the frame.
+static const std::string CONFIG_ENABLE_FRAME_BLANKING("enable_frame_blanking");
 
 PercivalFrameDecoder::PercivalFrameDecoder() :
         FrameDecoderUDP(),
@@ -24,7 +27,8 @@ PercivalFrameDecoder::PercivalFrameDecoder() :
 		current_frame_buffer_id_(-1),
 		current_frame_buffer_(0),
 		current_frame_header_(0),
-    bad_packets_seen_(0)
+    bad_packets_seen_(0),
+    frame_blanking_(true)
 {
     current_packet_header_.reset(new uint8_t[PercivalTransport::packet_header_size]);
     dropped_frame_buffer_.reset(new uint8_t[PercivalTransport::total_frame_size]);
@@ -65,7 +69,7 @@ std::string PercivalFrameDecoder::get_version_long()
 //
 void PercivalFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config_msg)
 {
-	FrameDecoder::init(logger, config_msg);
+	  FrameDecoder::init(logger, config_msg);
 
     if (enable_packet_logging_) {
         LOG4CXX_INFO(packet_logger_, "PktHdr: SourceAddress");
@@ -80,6 +84,12 @@ void PercivalFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config_
         LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      |     |  |  |             |     |     Info [42 Bytes]");
         LOG4CXX_INFO(packet_logger_, "PktHdr: |               |     |      |     |  |  |             |     |     |");
     }
+
+   if(config_msg.has_param(CONFIG_ENABLE_FRAME_BLANKING))
+   {
+     frame_blanking_ = config_msg.get_param<bool>(CONFIG_ENABLE_FRAME_BLANKING);
+     LOG4CXX_INFO(logger_, "Setting Frame-Blanking to " << frame_blanking_);
+   }
 }
 
 const size_t PercivalFrameDecoder::get_frame_buffer_size(void) const
@@ -283,26 +293,38 @@ void PercivalFrameDecoder::monitor_buffers(void)
                     << " with " << frame_header->packets_received << " packets received");
 
             frame_header->frame_state = FrameReceiveStateTimedout;
-            // we blank areas of the frame to make it clear they contain invalid data
-            for(int type=0;type<PercivalTransport::num_data_types;++type)
+            if(frame_blanking_)
             {
-              for(int subframe=0;subframe<PercivalTransport::num_subframes;++subframe)
+              // fill this frame to make it clear it's invalid
+              if (get_frame_buffer_size() > get_frame_header_size())
               {
-                int missing_packet_count = 0;
-                for(int packetid=0;packetid<PercivalTransport::num_primary_packets;++packetid)
+                  LOG4CXX_WARN(logger_, "clearing entire frame to 0xff");
+                  std::memset((char*)buffer_addr + get_frame_header_size(), 0xff, get_frame_buffer_size() - get_frame_header_size());
+              }
+            }
+            else
+            {
+              // we blank specific areas of the frame corresponding to missing packets only
+              for(int type=0;type<PercivalTransport::num_data_types;++type)
+              {
+                for(int subframe=0;subframe<PercivalTransport::num_subframes;++subframe)
                 {
-                  // check for specific packets missing
-                  if(current_frame_header_->packet_state[type][subframe][packetid]==0)
+                  int missing_packet_count = 0;
+                  for(int packetid=0;packetid<PercivalTransport::num_primary_packets;++packetid)
                   {
-                    // blank the memory with 0xff which can not be created by the detector
-                    uint8_t* packet_location = reinterpret_cast<uint8_t*>(buffer_addr) +
-                      get_packet_offset_in_frame(type, subframe, packetid);
-                    memset(packet_location, 0xff, PercivalTransport::packet_pixeldata_size);
-                    // we could log individual packets here, but it would be slow
-                    ++missing_packet_count;
+                    // check for specific packets missing
+                    if(current_frame_header_->packet_state[type][subframe][packetid]==0)
+                    {
+                      // blank the memory with 0xff which can not be created by the detector
+                      uint8_t* packet_location = reinterpret_cast<uint8_t*>(buffer_addr) +
+                        get_packet_offset_in_frame(type, subframe, packetid);
+                      memset(packet_location, 0xff, PercivalTransport::packet_pixeldata_size);
+                      // we could log individual packets here, but it would be slow
+                      ++missing_packet_count;
+                    }
                   }
+                  LOG4CXX_DEBUG(logger_, "type " << type << " subframe " << subframe << " num packets missing " << missing_packet_count);
                 }
-                LOG4CXX_DEBUG(logger_, "type " << type << " subframe " << subframe << " num packets missing " << missing_packet_count);
               }
             }
 

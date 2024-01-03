@@ -61,6 +61,8 @@ namespace FrameReceiver
         uint8_t* raw_packet_header(void) const;
         unsigned int elapsed_ms(struct timespec& start, struct timespec& end);
 
+        bool frame_blanking_;
+
         boost::shared_ptr<void> current_packet_header_;
         boost::shared_ptr<void> dropped_frame_buffer_;
 
