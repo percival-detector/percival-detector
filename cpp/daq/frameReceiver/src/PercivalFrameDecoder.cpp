@@ -114,88 +114,96 @@ void* PercivalFrameDecoder::get_packet_header_buffer(void)
 
 void PercivalFrameDecoder::process_packet_header(size_t bytes_received, int port, struct sockaddr_in* from_addr)
 {
-    //TODO validate header size and content, handle incoming new packet buffer allocation etc
-
-    // Dump raw header if packet logging enabled
-    if (enable_packet_logging_)
+    if(bytes_received == get_packet_header_size())
     {
-        std::stringstream ss;
-        uint8_t* hdr_ptr = raw_packet_header();
-        ss << "PktHdr: " << std::setw(15) << std::left << inet_ntoa(from_addr->sin_addr) << std::right << " "
-           << std::setw(5) << ntohs(from_addr->sin_port) << " "
-           << std::setw(5) << port << std::hex;
-        for (unsigned int hdr_byte = 0; hdr_byte < PercivalTransport::packet_header_size; hdr_byte++)
+      // Dump raw header if packet logging enabled
+      if (enable_packet_logging_)
+      {
+          std::stringstream ss;
+          uint8_t* hdr_ptr = raw_packet_header();
+          ss << "PktHdr: " << std::setw(15) << std::left << inet_ntoa(from_addr->sin_addr) << std::right << " "
+             << std::setw(5) << ntohs(from_addr->sin_port) << " "
+             << std::setw(5) << port << std::hex;
+          for (unsigned int hdr_byte = 0; hdr_byte < PercivalTransport::packet_header_size; hdr_byte++)
+          {
+              if (hdr_byte % 8 == 0) {
+                  ss << "  ";
+              }
+              ss << std::setw(2) << std::setfill('0') << (unsigned int)*hdr_ptr << " ";
+              hdr_ptr++;
+          }
+          ss << std::dec;
+          LOG4CXX_INFO(packet_logger_, ss.str());
+      }
+
+	    int frame = static_cast<int>(get_frame_number());
+	    uint16_t packet_number = get_packet_number();
+	    uint8_t  subframe = get_subframe_number();
+	    uint8_t  type = get_packet_type();
+      uint16_t datablock_size = get_datablock_size();
+
+      LOG4CXX_DEBUG_LEVEL(3, logger_, "Got packet header:"
+              << " type: "     << (int)type << " subframe: " << (int)subframe
+              << " packet: "   << packet_number    << " frame: "    << frame
+      );
+
+      if (frame != current_frame_num_)
+      {
+        current_frame_num_ = frame;
+        bool bNeedInitializeHeader = false;
+
+      	if (frame_buffer_map_.count(current_frame_num_) == 0 && frames_we_drop_.count(current_frame_num_) == 0)
+      	{
+          // new frame appears, allocate a buffer for it.
+          if (empty_buffer_queue_.empty())
+          {
+              LOG4CXX_ERROR(logger_, "First packet from frame " << current_frame_num_ << " but no free buffers. Dropping frame.");
+              frames_we_drop_[current_frame_num_] = DUMMY_BUFFER;
+              frames_dropped_ += 1;
+          }
+	        else
+	        {
+              current_frame_buffer_id_ = empty_buffer_queue_.front();
+              empty_buffer_queue_.pop();
+              frame_buffer_map_[current_frame_num_] = current_frame_buffer_id_;
+
+              LOG4CXX_DEBUG_LEVEL(2, logger_, "First packet from frame " << current_frame_num_ << " detected, allocating frame buffer ID " << current_frame_buffer_id_);
+	        }
+          bNeedInitializeHeader = true;
+      	}
+
+          // select the right buffer for this frame
+      	if(frame_buffer_map_.count(current_frame_num_))
+      	{
+      		current_frame_buffer_id_ = frame_buffer_map_[current_frame_num_];
+          current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
+      	}
+        else if(frames_we_drop_.count(current_frame_num_))
         {
-            if (hdr_byte % 8 == 0) {
-                ss << "  ";
-            }
-            ss << std::setw(2) << std::setfill('0') << (unsigned int)*hdr_ptr << " ";
-            hdr_ptr++;
+            current_frame_buffer_id_ = DUMMY_BUFFER;
+            current_frame_buffer_ = dropped_frame_buffer_.get();
         }
-        ss << std::dec;
-        LOG4CXX_INFO(packet_logger_, ss.str());
+        current_frame_header_ = reinterpret_cast<PercivalTransport::FrameHeader*>(current_frame_buffer_);
+
+        // initialize the header if it's a new one
+        if(bNeedInitializeHeader)
+        {
+   	        // Initialise frame header
+            current_frame_header_->frame_number = current_frame_num_;
+            current_frame_header_->frame_state = FrameDecoder::FrameReceiveStateIncomplete;
+            current_frame_header_->packets_received = 0;
+            memset(current_frame_header_->packet_state, 0, PercivalTransport::num_frame_packets);
+            memcpy(current_frame_header_->frame_info, get_frame_info(), PercivalTransport::frame_info_size);
+            gettime(reinterpret_cast<struct timespec*>(&(current_frame_header_->frame_start_time)));
+        }
+      }
     }
-
-	  int frame = static_cast<int>(get_frame_number());
-	  uint16_t packet_number = get_packet_number();
-	  uint8_t  subframe = get_subframe_number();
-	  uint8_t  type = get_packet_type();
-    uint16_t datablock_size = get_datablock_size();
-
-    LOG4CXX_DEBUG_LEVEL(3, logger_, "Got packet header:"
-            << " type: "     << (int)type << " subframe: " << (int)subframe
-            << " packet: "   << packet_number    << " frame: "    << frame
-    );
-
-    if (frame != current_frame_num_)
+    else
     {
-      current_frame_num_ = frame;
-      bool bNeedInitializeHeader = false;
-
-    	if (frame_buffer_map_.count(current_frame_num_) == 0 && frames_we_drop_.count(current_frame_num_) == 0)
-    	{
-        // new frame appears, allocate a buffer for it.
-        if (empty_buffer_queue_.empty())
-        {
-            LOG4CXX_ERROR(logger_, "First packet from frame " << current_frame_num_ << " but no free buffers. Dropping frame.");
-            frames_we_drop_[current_frame_num_] = DUMMY_BUFFER;
-            frames_dropped_ += 1;
-        }
-	      else
-	      {
-            current_frame_buffer_id_ = empty_buffer_queue_.front();
-            empty_buffer_queue_.pop();
-            frame_buffer_map_[current_frame_num_] = current_frame_buffer_id_;
-
-            LOG4CXX_DEBUG_LEVEL(2, logger_, "First packet from frame " << current_frame_num_ << " detected, allocating frame buffer ID " << current_frame_buffer_id_);
-	      }
-        bNeedInitializeHeader = true;
-    	}
-
-        // select the right buffer for this frame
-    	if(frame_buffer_map_.count(current_frame_num_))
-    	{
-    		current_frame_buffer_id_ = frame_buffer_map_[current_frame_num_];
-        current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
-    	}
-      else if(frames_we_drop_.count(current_frame_num_))
-      {
-          current_frame_buffer_id_ = DUMMY_BUFFER;
-          current_frame_buffer_ = dropped_frame_buffer_.get();
-      }
-      current_frame_header_ = reinterpret_cast<PercivalTransport::FrameHeader*>(current_frame_buffer_);
-
-      // initialize the header if it's a new one
-      if(bNeedInitializeHeader)
-      {
- 	        // Initialise frame header
-          current_frame_header_->frame_number = current_frame_num_;
-          current_frame_header_->frame_state = FrameDecoder::FrameReceiveStateIncomplete;
-          current_frame_header_->packets_received = 0;
-          memset(current_frame_header_->packet_state, 0, PercivalTransport::num_frame_packets);
-          memcpy(current_frame_header_->frame_info, get_frame_info(), PercivalTransport::frame_info_size);
-          gettime(reinterpret_cast<struct timespec*>(&(current_frame_header_->frame_start_time)));
-      }
+      // this means the packet is smaller than the header-size, as the framework only requests the header.
+      // as such there is no chance of a buffer overrun.
+      LOG4CXX_ERROR(logger_, "Packet arrived with size " << bytes_received << " which is too small."
+                              << " Needs to be bytes " << get_packet_header_size());
     }
 }
 
