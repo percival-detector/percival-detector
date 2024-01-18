@@ -2,6 +2,7 @@
 #include "CalibratorReset.h"
 #include "SIMDMacros.h"
 
+#include <boost/version.hpp>
 #include <boost/bind/bind.hpp>
 #include <iostream>
 
