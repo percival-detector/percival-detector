@@ -21,7 +21,7 @@
 
 namespace FrameSimulator {
 
-    static const FrameSimulatorOption<int> opt_packetfillmode("fill-mode", "How to fill created packets:\n 0 - packet n repeats <n>\n 1 - each pixel increments the previous; first pixel of reset frame is 0");
+    static const FrameSimulatorOption<int> opt_packetfillmode("fill-mode", "How to fill created packets:\n 0 - packet n repeats <n>\n 1 - each pixel increments the previous; first pixel of each frame is 0");
 
     /** Construct an PercivalFrameSimulatorPlugin
     * setup an instance of the logger
@@ -132,9 +132,10 @@ namespace FrameSimulator {
             {
                 // reset the count so the start of each data / reset frame is zero-pixel
                 pixelCount = 0;
-                for(int sf=0;sf<PercivalTransport::num_subframes;++sf)
+
+                for(int pk=0;pk<PercivalTransport::num_primary_packets;++pk)
                 {
-                    for(int pk=0;pk<PercivalTransport::num_primary_packets;++pk)
+                    for(int sf=0;sf<PercivalTransport::num_subframes;++sf)
                     {
                         boost::shared_ptr<Packet> pkt(new Packet());
                         void* buf = malloc(size);

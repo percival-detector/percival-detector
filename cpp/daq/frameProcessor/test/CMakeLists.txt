@@ -31,7 +31,7 @@ endif()
 
 # Define libraries to link against
 target_link_libraries(percivalFrameProcessorTest
-	    PercivalProcessPlugin
+	    PercivalProcess2Plugin
 		${ODINDATA_LIBRARIES} 
 		${Boost_LIBRARIES}
 		${LOG4CXX_LIBRARIES}
