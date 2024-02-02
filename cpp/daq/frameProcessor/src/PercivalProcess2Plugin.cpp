@@ -1,4 +1,10 @@
-
+// PercivalProcess2Plugin.cpp
+//
+// This is the standard plugin for use in 2023. It replaced the PercivalProcessPlugin
+// which was used with an early udp-format on the emulator board.
+// The python function convert_odin_daq_2_mezzanine() was written for use with
+// the earlier PercivalProcessPlugin, and this version does not need it.
+//
 
 #include <PercivalProcess2Plugin.h>
 #include <DataBlockFrame.h>

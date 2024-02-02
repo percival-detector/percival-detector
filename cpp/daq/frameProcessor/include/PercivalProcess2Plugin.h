@@ -23,9 +23,10 @@ namespace FrameProcessor
    * the two "data" and "reset" Frame objects.
    * This one was created at request from AM at Desy when it was noticed that
    * the data reordering in PercivalProcessPlugin was redundant, and it labeled
-   * the reset and data frames the wrong way around.
-   *  It is only temporary, and is designed to replicate the combined effect of
-   * Plugin0 + python func convert_odin_daq_2_mezzanine() is.
+   * the reset and data frames the wrong way around. The python function
+   * convert_odin_daq_2_mezzanine() compensated for these problems.
+   * Use convert_odin_daq_2_mezzanine() only if you use PercivalProcessPlugin.
+   * The PercivalProcessPlugin was deleted Feb 2024.
    */
   class PercivalProcess2Plugin : public FrameProcessorPlugin
   {

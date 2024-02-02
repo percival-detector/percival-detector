@@ -5,27 +5,27 @@
 
 #include <iostream>
 
-#include "PercivalProcessPlugin.h"
+#include "PercivalProcess2Plugin.h"
 
-class PercivalProcessPluginTestFixture
+class PercivalProcess2PluginTestFixture
 {
 public:
-    PercivalProcessPluginTestFixture()
+    PercivalProcess2PluginTestFixture()
     {
-        std::cout << "PercivalProcessPluginTestFixture constructor" << std::endl;
+        std::cout << "PercivalProcess2PluginTestFixture constructor" << std::endl;
     }
 
-    ~PercivalProcessPluginTestFixture()
+    ~PercivalProcess2PluginTestFixture()
     {
-        std::cout << "PercivalProcessPluginTestFixture destructor" << std::endl;
+        std::cout << "PercivalProcess2PluginTestFixture destructor" << std::endl;
     }
 };
 
-BOOST_FIXTURE_TEST_SUITE(PercivalProcessPluginUnitTest, PercivalProcessPluginTestFixture);
+BOOST_FIXTURE_TEST_SUITE(PercivalProcess2PluginUnitTest, PercivalProcess2PluginTestFixture);
 
-BOOST_AUTO_TEST_CASE(PercivalProcessPluginTestFixture)
+BOOST_AUTO_TEST_CASE(PercivalProcess2PluginTestFixture)
 {
-    std::cout << "PercivalProcessPluginTestFixture test case" << std::endl;
+    std::cout << "PercivalProcess2PluginTestFixture test case" << std::endl;
     BOOST_CHECK(true);
 }
 
