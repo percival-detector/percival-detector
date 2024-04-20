@@ -30,6 +30,7 @@ PercivalFrameDecoder::PercivalFrameDecoder() :
     bad_packets_seen_(0),
     frame_blanking_(true)
 {
+    LOG4CXX_DEBUG_LEVEL(0, logger_, "PercivalFrameDecoder constructed");
     current_packet_header_.reset(new uint8_t[PercivalTransport::packet_header_size]);
     dropped_frame_buffer_.reset(new uint8_t[PercivalTransport::total_frame_size]);
 }

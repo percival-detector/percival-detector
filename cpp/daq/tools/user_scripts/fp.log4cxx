@@ -11,7 +11,13 @@ log4j.appender.FA1.layout.ConversionPattern=%d %-5p [%c] - %m%n
 log4j.appender.FA1.File=fp1.log
 # set whether to overwrite or append to the file
 log4j.appender.FA1.Append=false
-log4j.appender.FA1.ImmediateFlush = true
+log4j.appender.FA1.ImmediateFlush = false
+
+
+log4j.logger.FP.LiveViewPlugin = info
+
+log4j.logger.FP.PercivalProcess2Plugin = info
+log4j.additivity.FP.PercivalProcess2Plugin = true
 
 # show this file being read
 log4j.debug=true

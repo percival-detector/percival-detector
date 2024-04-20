@@ -27,6 +27,15 @@
   },
   {
     "plugin": {
+      "load": {
+        "index": "liveview",
+        "name": "LiveViewPlugin",
+        "library": "/opt/percival-detector/odin/lib/libLiveViewPlugin.so"
+      }
+    }
+  },
+  {
+    "plugin": {
       "connect": {
         "index": "percival",
         "connection": "frame_receiver"
@@ -37,6 +46,14 @@
     "plugin": {
       "connect": {
         "index": "hdf",
+        "connection": "percival"
+      }
+    }
+  },
+  {
+    "plugin": {
+      "connect": {
+        "index": "liveview",
         "connection": "percival"
       }
     }
@@ -74,6 +91,13 @@
         "rank": 0,
         "alignment_value" :  4194304
       }
+    }
+  },
+  {
+    "liveview": {
+      "live_view_socket_addr" : "tcp://172.23.98.116:5020",
+      "frame_frequency" : 50,
+      "dataset_name" : "data, reset"
     }
   }
 

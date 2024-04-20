@@ -1,7 +1,7 @@
 15/7/2021
 This directory contains example-scripts that are packaged with the rpm. They are
 intented to give the user a start-point for running the DAQ. The user should
-copy them to his own directory, alter them, and run them.
+copy them to his own directory and alter them as necessary.
 
 ports 5000 are used for external clients and gui to connect to the FR1
 ports 5002 / 5001 are used for internal communications between the FR1 and FP1

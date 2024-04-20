@@ -11,9 +11,11 @@ log4j.appender.FA1.layout.ConversionPattern=%d %-5p [%c] - %m%n
 log4j.appender.FA1.File=fr1.log
 # set whether to overwrite or append to the file
 log4j.appender.FA1.Append=false
+log4j.appender.FA1.ImmediateFlush = false
 
-#log4j.logger.FR.Controller = debug, FA1
-#log4j.logger.FR.RxThread = info, FA1
+#log4j.logger.FR.Controller = debug
+#log4j.logger.FR.RxThread = info
+log4j.logger.FR.FrameDecoder=info
 
 #log4j.additivity.FR.RxThread = false
 #log4j.additivity.FR.Controller = false
