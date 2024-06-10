@@ -1,0 +1,20 @@
+
+This is a summary of work proposed for 2025
+
+There is a new mezzanine board for Percival which will have a different
+format for the udp-stream. The new software will be tagged '3' to
+distinguish it from previous versions.
+
+New plugins for the FR and FP will be needed:
+
+Percival3FrameDecoder.cpp
+PercivalProcess3Plugin.cpp (this file already exists and can be used).
+
+The details of the format is still unclear, and Desy will provide this
+in time. The data-stream will be descrambled.
+
+The main script that processes the data saved by the FP is called
+tool_merge_acq.py, and it performs a pixelwise extraction of the
+adc-data. A new version of this will be required called
+tool_merge_acq3.py.
+
